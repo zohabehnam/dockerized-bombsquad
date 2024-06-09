@@ -733,6 +733,8 @@
    }
   ]
  },
+ "Team Game Max Players": 99,
+ "Free-for-All Max Players":99,
  "launchCount": 252,
  "lc14173": 1,
  "lc14292": 1
