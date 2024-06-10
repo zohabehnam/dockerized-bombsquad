@@ -1,22 +1,24 @@
 {
     "whitelist": false,
-
+    "useV2Account": false,
     "ChatCommands": {
   	  "BrodcastCommand": true
     },
     "textonmap": {
         "top watermark": "Welcome to server \nip 192.168.0.1",
-        "bottom left watermark": "Owner : <owner-name> \nEditor : <bablu>\nScripts : BCS1.3.3",
+        "bottom left watermark": "Owner : <owner-name> \nEditor : <bablu>\nScripts : BCS1.7.10",
         "center highlights":{
             "color":[1,0,0],
             "randomColor":true,
             "msg":[
-                "message 1",
-                "message 2",
-                "message 3"
+                "type end to start end vote",
+                "start msg with prefix .(dot) to send in game popup msg",
+                "start msg with prefix ,(comma) to send msg to teammates",
+                "BombSquad Community Server - BCS"
                 ]
-        } 
+        }
     },
+    "statsResetAfterDays":31,
     "leaderboard":{
         "enable":true,
         "barsBehindName":true
@@ -25,8 +27,10 @@
         "enable":true,
         "startTime":"18:30",
         "endTime":"06:00",
-        "fireflies":true
+        "fireflies":true,
+        "fireflies_random_color":false
     },
+    "colorfullMap":true,
     "playlists":{
         "default":12345,
         "team":12345,
@@ -35,12 +39,25 @@
         "death":23432
     },
     "coopModeWithLessPlayers":{
-        "enable":true,
+        "enable":false,
         "minPlayerToExitCoop":0
     },
     "mikirogQuickTurn":{
         "enable":true
     },
+    "colorful_explosions":{
+        "enable":true
+    },
+    "ballistica_web": {
+        "enable":false
+    },
+    "character_chooser":{
+        "enable":true
+    },
+    "custom_characters": {
+        "enable":true
+    },
+    "StumbledScoreScreen":true,
     "elPatronPowerups":{
         "enable":true,
         "settings":{"Powers Gravity": true,
@@ -59,9 +76,25 @@
             "Ice Man": 1,"Tank Shield": 1, "Impairment Bombs": 2,
             "Fire Bombs": 3, "Fly Bombs": 3}
     },
+    "discordbot":{
+        "enable":false,
+        "token":"<secret-token-here>",
+        "liveChat":true,
+        "liveStatsChannelID":925440043672285205,
+        "logsChannelID":925440079843958834
+    },
+    "afk_remover":{
+        "enable":true,
+        "ingame_idle_time_in_secs":60,
+        "kick_idle_from_lobby":true,
+        "lobby_idle_time_in_secs":10
+    },
+    "allowTeamChat":true,
+    "allowEndVote":true,
+    "allowInGameChat":true,
     "sameCharacterForTeam":false,
     "newResultBoard":true,
-    "HostDeviceName":"v1.3.2",
+    "HostDeviceName":"v1.4",
     "HostName":"BCS",
     "ShowKickVoteStarterName":true,
     "KickVoteMsgType":"chat",
@@ -79,5 +112,6 @@
     "enablestats": true,
     "enableHitTexts": true,
     "enableeffects": true,
-    "enableTop5effects": true
+    "enableTop5effects": true,
+    "enableTagAnimation":true
 }

@@ -1,10 +1,10 @@
-FROM ubuntu:20.04
+FROM docker.arvancloud.ir/ubuntu:22.04
 
 ARG BOMBSQUAD_VERSION="1.5.29"
 
 
-RUN apt-get -y update && apt-get install -y python3.9 libpython3.9 locales libsdl2-2.0-0 wget && rm -rf /var/lib/apt/lists/* \
-    && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+RUN apt -y update
+RUN apt install -y python3-pip python3.10-dev python3.10-venv
 
 ENV LANG en_US.utf8
 
@@ -12,6 +12,10 @@ WORKDIR /app
 
 COPY . .
 
+RUN chmod 777 bombsquad_server
+RUN chmod 777 dist/bombsquad_headless
+
 EXPOSE 43210/udp
+
 
 CMD ["/app/bombsquad_server"]

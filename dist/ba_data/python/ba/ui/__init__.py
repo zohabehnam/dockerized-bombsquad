@@ -11,10 +11,9 @@ from typing import TYPE_CHECKING, cast, Type
 
 import _ba
 from ba._generated.enums import TimeType
-from ba._general import print_active_refs
 
 if TYPE_CHECKING:
-    from typing import Optional, Any
+    from typing import Any
 
     import ba
 
@@ -44,9 +43,10 @@ class Window:
 @dataclass
 class UICleanupCheck:
     """Holds info about a uicleanupcheck target."""
+
     obj: weakref.ref
     widget: ba.Widget
-    widget_death_time: Optional[float]
+    widget_death_time: float | None
 
 
 class UILocation:
@@ -76,7 +76,7 @@ class UILocationWindow(UILocation):
 
     def __init__(self) -> None:
         super().__init__()
-        self._root_widget: Optional[ba.Widget] = None
+        self._root_widget: ba.Widget | None = None
 
     def get_root_widget(self) -> ba.Widget:
         """Return the root widget for this window."""
@@ -91,7 +91,7 @@ class UIEntry:
         self._name = name
         self._state = None
         self._args = None
-        self._instance: Optional[UILocation] = None
+        self._instance: UILocation | None = None
         self._controller = weakref.ref(controller)
 
     def create(self) -> None:
@@ -112,6 +112,7 @@ class UIEntry:
         # TEMP HARD CODED - WILL REPLACE THIS WITH BA_META LOOKUPS.
         if self._name == 'mainmenu':
             from bastd.ui import mainmenu
+
             return cast(Type[UILocation], mainmenu.MainMenuWindow)
         raise ValueError('unknown ui class ' + str(self._name))
 
@@ -129,7 +130,7 @@ class UIController:
         self._main_stack_menu: list[UIEntry] = []
 
         # This points at either the game or menu stack.
-        self._main_stack: Optional[list[UIEntry]] = None
+        self._main_stack: list[UIEntry] | None = None
 
         # There's only one of these since we don't need to preserve its state
         # between sessions.
@@ -139,8 +140,9 @@ class UIController:
         """Show the main menu, clearing other UIs from location stacks."""
         self._main_stack = []
         self._dialog_stack = []
-        self._main_stack = (self._main_stack_game
-                            if in_game else self._main_stack_menu)
+        self._main_stack = (
+            self._main_stack_game if in_game else self._main_stack_menu
+        )
         self._main_stack.append(UIEntry('mainmenu', self))
         self._update_ui()
 
@@ -154,8 +156,13 @@ class UIController:
                 entry.destroy()
 
         # Now create the topmost one if there is one.
-        entrynew = (self._dialog_stack[-1] if self._dialog_stack else
-                    self._main_stack[-1] if self._main_stack else None)
+        entrynew = (
+            self._dialog_stack[-1]
+            if self._dialog_stack
+            else self._main_stack[-1]
+            if self._main_stack
+            else None
+        )
         if entrynew is not None:
             entrynew.create()
 
@@ -190,9 +197,10 @@ def uicleanupcheck(obj: Any, widget: ba.Widget) -> None:
         widget.add_delete_callback(foobar)
 
     _ba.app.ui.cleanupchecks.append(
-        UICleanupCheck(obj=weakref.ref(obj),
-                       widget=widget,
-                       widget_death_time=None))
+        UICleanupCheck(
+            obj=weakref.ref(obj), widget=widget, widget_death_time=None
+        )
+    )
 
 
 def ui_upkeep() -> None:
@@ -218,11 +226,12 @@ def ui_upkeep() -> None:
             # Widget was already dead; complain if its been too long.
             if now - check.widget_death_time > 5.0:
                 print(
-                    'WARNING:', obj,
+                    'WARNING:',
+                    obj,
                     'is still alive 5 second after its widget died;'
-                    ' you might have a memory leak.')
-                print_active_refs(obj)
-
+                    ' you might have a memory leak. See efro.debug module'
+                    ' for tools to help debug this.',
+                )
             else:
                 remainingchecks.append(check)
     ui.cleanupchecks = remainingchecks

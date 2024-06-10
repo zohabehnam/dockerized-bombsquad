@@ -9,19 +9,24 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 import _ba
 from ba._team import Team
 from ba._player import Player
-from ba._error import (print_exception, SessionTeamNotFoundError,
-                       SessionPlayerNotFoundError, NodeNotFoundError)
+from ba._error import (
+    print_exception,
+    SessionTeamNotFoundError,
+    SessionPlayerNotFoundError,
+    NodeNotFoundError,
+)
 from ba._dependency import DependencyComponent
 from ba._general import Call, verify_object_death
 from ba._messages import UNHANDLED
 
 if TYPE_CHECKING:
-    from typing import Optional, Any
+    from typing import Any
     import ba
-    from bastd.actor.respawnicon import RespawnIcon
 
+# pylint: disable=invalid-name
 PlayerType = TypeVar('PlayerType', bound=Player)
 TeamType = TypeVar('TeamType', bound=Team)
+# pylint: enable=invalid-name
 
 
 class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
@@ -32,104 +37,97 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
     Examples of Activities include games, score-screens, cutscenes, etc.
     A ba.Session has one 'current' Activity at any time, though their existence
     can overlap during transitions.
-
-    Attributes:
-
-       settings_raw
-          The settings dict passed in when the activity was made.
-          This attribute is deprecated and should be avoided when possible;
-          activities should pull all values they need from the 'settings' arg
-          passed to the Activity __init__ call.
-
-       teams
-          The list of ba.Teams in the Activity. This gets populated just before
-          before on_begin() is called and is updated automatically as players
-          join or leave the game. (at least in free-for-all mode where every
-          player gets their own team; in teams mode there are always 2 teams
-          regardless of the player count).
-
-       players
-          The list of ba.Players in the Activity. This gets populated just
-          before on_begin() is called and is updated automatically as players
-          join or leave the game.
     """
 
     # pylint: disable=too-many-public-methods
 
-    # Annotating attr types at the class level lets us introspect at runtime.
     settings_raw: dict[str, Any]
+    """The settings dict passed in when the activity was made.
+       This attribute is deprecated and should be avoided when possible;
+       activities should pull all values they need from the 'settings' arg
+       passed to the Activity __init__ call."""
+
     teams: list[TeamType]
+    """The list of ba.Team-s in the Activity. This gets populated just
+       before on_begin() is called and is updated automatically as players
+       join or leave the game. (at least in free-for-all mode where every
+       player gets their own team; in teams mode there are always 2 teams
+       regardless of the player count)."""
+
     players: list[PlayerType]
+    """The list of ba.Player-s in the Activity. This gets populated just
+       before on_begin() is called and is updated automatically as players
+       join or leave the game."""
 
-    # Whether to print every time a player dies. This can be pertinent
-    # in games such as Death-Match but can be annoying in games where it
-    # doesn't matter.
     announce_player_deaths = False
+    """Whether to print every time a player dies. This can be pertinent
+       in games such as Death-Match but can be annoying in games where it
+       doesn't matter."""
 
-    # Joining activities are for waiting for initial player joins.
-    # They are treated slightly differently than regular activities,
-    # mainly in that all players are passed to the activity at once
-    # instead of as each joins.
     is_joining_activity = False
+    """Joining activities are for waiting for initial player joins.
+       They are treated slightly differently than regular activities,
+       mainly in that all players are passed to the activity at once
+       instead of as each joins."""
 
-    # Whether game-time should still progress when in menus/etc.
     allow_pausing = False
+    """Whether game-time should still progress when in menus/etc."""
 
-    # Whether idle players can potentially be kicked (should not happen in
-    # menus/etc).
     allow_kick_idle_players = True
+    """Whether idle players can potentially be kicked (should not happen in
+       menus/etc)."""
 
-    # In vr mode, this determines whether overlay nodes (text, images, etc)
-    # are created at a fixed position in space or one that moves based on
-    # the current map. Generally this should be on for games and off for
-    # transitions/score-screens/etc. that persist between maps.
     use_fixed_vr_overlay = False
+    """In vr mode, this determines whether overlay nodes (text, images, etc)
+       are created at a fixed position in space or one that moves based on
+       the current map. Generally this should be on for games and off for
+       transitions/score-screens/etc. that persist between maps."""
 
-    # If True, runs in slow motion and turns down sound pitch.
     slow_motion = False
+    """If True, runs in slow motion and turns down sound pitch."""
 
-    # Set this to True to inherit slow motion setting from previous
-    # activity (useful for transitions to avoid hitches).
     inherits_slow_motion = False
+    """Set this to True to inherit slow motion setting from previous
+       activity (useful for transitions to avoid hitches)."""
 
-    # Set this to True to keep playing the music from the previous activity
-    # (without even restarting it).
     inherits_music = False
+    """Set this to True to keep playing the music from the previous activity
+       (without even restarting it)."""
 
-    # Set this to true to inherit VR camera offsets from the previous
-    # activity (useful for preventing sporadic camera movement
-    # during transitions).
     inherits_vr_camera_offset = False
+    """Set this to true to inherit VR camera offsets from the previous
+       activity (useful for preventing sporadic camera movement
+       during transitions)."""
 
-    # Set this to true to inherit (non-fixed) VR overlay positioning from
-    # the previous activity (useful for prevent sporadic overlay jostling
-    # during transitions).
     inherits_vr_overlay_center = False
+    """Set this to true to inherit (non-fixed) VR overlay positioning from
+       the previous activity (useful for prevent sporadic overlay jostling
+       during transitions)."""
 
-    # Set this to true to inherit screen tint/vignette colors from the
-    # previous activity (useful to prevent sudden color changes during
-    # transitions).
     inherits_tint = False
+    """Set this to true to inherit screen tint/vignette colors from the
+       previous activity (useful to prevent sudden color changes during
+       transitions)."""
 
-    # Whether players should be allowed to join in the middle of this
-    # activity. Note that Sessions may not allow mid-activity-joins even
-    # if the activity says its ok.
     allow_mid_activity_joins: bool = True
+    """Whether players should be allowed to join in the middle of this
+       activity. Note that Sessions may not allow mid-activity-joins even
+       if the activity says its ok."""
 
-    # If the activity fades or transitions in, it should set the length of
-    # time here so that previous activities will be kept alive for that
-    # long (avoiding 'holes' in the screen)
-    # This value is given in real-time seconds.
     transition_time = 0.0
+    """If the activity fades or transitions in, it should set the length of
+       time here so that previous activities will be kept alive for that
+       long (avoiding 'holes' in the screen)
+       This value is given in real-time seconds."""
 
-    # Is it ok to show an ad after this activity ends before showing
-    # the next activity?
     can_show_ad_on_death = False
+    """Is it ok to show an ad after this activity ends before showing
+       the next activity?"""
 
     def __init__(self, settings: dict):
         """Creates an Activity in the current ba.Session.
 
-        The activity will not be actually run until ba.Session.setactivity()
+        The activity will not be actually run until ba.Session.setactivity
         is called. 'settings' should be a dict of key/value pairs specific
         to the activity.
 
@@ -145,7 +143,7 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         assert isinstance(settings, dict)
         assert _ba.getactivity() is self
 
-        self._globalsnode: Optional[ba.Node] = None
+        self._globalsnode: ba.Node | None = None
 
         # Player/Team types should have been specified as type args;
         # grab those.
@@ -154,7 +152,7 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         self._setup_player_and_team_types()
 
         # FIXME: Relocate or remove the need for this stuff.
-        self.paused_text: Optional[ba.Actor] = None
+        self.paused_text: ba.Actor | None = None
 
         self._session = weakref.ref(_ba.getsession())
 
@@ -169,7 +167,7 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         self._has_transitioned_in = False
         self._has_begun = False
         self._has_ended = False
-        self._activity_death_check_timer: Optional[ba.Timer] = None
+        self._activity_death_check_timer: ba.Timer | None = None
         self._expired = False
         self._delay_delete_players: list[PlayerType] = []
         self._delay_delete_teams: list[TeamType] = []
@@ -183,14 +181,14 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         self._actor_refs: list[ba.Actor] = []
         self._actor_weak_refs: list[weakref.ref[ba.Actor]] = []
         self._last_prune_dead_actors_time = _ba.time()
-        self._prune_dead_actors_timer: Optional[ba.Timer] = None
+        self._prune_dead_actors_timer: ba.Timer | None = None
 
         self.teams = []
         self.players = []
 
         self.lobby = None
-        self._stats: Optional[ba.Stats] = None
-        self._customdata: Optional[dict] = {}
+        self._stats: ba.Stats | None = None
+        self._customdata: dict | None = {}
 
     def __del__(self) -> None:
 
@@ -205,8 +203,11 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
             session = self._session()
             if session is not None:
                 _ba.pushcall(
-                    Call(session.transitioning_out_activity_was_freed,
-                         self.can_show_ad_on_death))
+                    Call(
+                        session.transitioning_out_activity_was_freed,
+                        self.can_show_ad_on_death,
+                    )
+                )
 
     @property
     def globalsnode(self) -> ba.Node:
@@ -226,6 +227,7 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         """
         if self._stats is None:
             from ba._error import NotFoundError
+
             raise NotFoundError()
         return self._stats
 
@@ -291,7 +293,8 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
                 5.0,
                 Call(self._check_activity_death, ref, [0]),
                 repeat=True,
-                timetype=TimeType.REAL)
+                timetype=TimeType.REAL,
+            )
 
         # Run _expire in an empty context; nothing should be happening in
         # there except deleting things which requires no context.
@@ -302,8 +305,9 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
             with _ba.Context('empty'):
                 self._expire()
         else:
-            raise RuntimeError(f'destroy() called when'
-                               f' already expired for {self}')
+            raise RuntimeError(
+                f'destroy() called when' f' already expired for {self}'
+            )
 
     def retain_actor(self, actor: ba.Actor) -> None:
         """Add a strong-reference to a ba.Actor to this Activity.
@@ -314,6 +318,7 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         """
         if __debug__:
             from ba._actor import Actor
+
             assert isinstance(actor, Actor)
         self._actor_refs.append(actor)
 
@@ -324,6 +329,7 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         """
         if __debug__:
             from ba._actor import Actor
+
             assert isinstance(actor, Actor)
         self._actor_weak_refs.append(weakref.ref(actor))
 
@@ -336,6 +342,7 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         session = self._session()
         if session is None:
             from ba._error import SessionNotFoundError
+
             raise SessionNotFoundError()
         return session
 
@@ -369,8 +376,8 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
     def on_transition_out(self) -> None:
         """Called when your activity begins transitioning out.
 
-        Note that this may happen at any time even if end() has not been
-        called.
+        Note that this may happen at any time even if ba.Activity.end() has
+        not been called.
         """
 
     def on_begin(self) -> None:
@@ -386,11 +393,12 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         return UNHANDLED
 
     def has_transitioned_in(self) -> bool:
-        """Return whether on_transition_in() has been called."""
+        """Return whether ba.Activity.on_transition_in()
+        has been called."""
         return self._has_transitioned_in
 
     def has_begun(self) -> bool:
-        """Return whether on_begin() has been called."""
+        """Return whether ba.Activity.on_begin() has been called."""
         return self._has_begun
 
     def has_ended(self) -> bool:
@@ -398,10 +406,10 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         return self._has_ended
 
     def is_transitioning_out(self) -> bool:
-        """Return whether on_transition_out() has been called."""
+        """Return whether ba.Activity.on_transition_out() has been called."""
         return self._transitioning_out
 
-    def transition_in(self, prev_globals: Optional[ba.Node]) -> None:
+    def transition_in(self, prev_globals: ba.Node | None) -> None:
         """Called by Session to kick off transition-in.
 
         (internal)
@@ -430,7 +438,8 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
             if self.inherits_vr_overlay_center and prev_globals is not None:
                 glb.vr_overlay_center = prev_globals.vr_overlay_center
                 glb.vr_overlay_center_enabled = (
-                    prev_globals.vr_overlay_center_enabled)
+                    prev_globals.vr_overlay_center_enabled
+                )
 
             # If they want to inherit tint from the previous self.
             if self.inherits_tint and prev_globals is not None:
@@ -440,9 +449,9 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
 
             # Start pruning our various things periodically.
             self._prune_dead_actors()
-            self._prune_dead_actors_timer = _ba.Timer(5.17,
-                                                      self._prune_dead_actors,
-                                                      repeat=True)
+            self._prune_dead_actors_timer = _ba.Timer(
+                5.17, self._prune_dead_actors, repeat=True
+            )
 
             _ba.timer(13.3, self._prune_delay_deletes, repeat=True)
 
@@ -496,10 +505,9 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
             # activity launch; just wanna be sure that is intentional.
             self.on_begin()
 
-    def end(self,
-            results: Any = None,
-            delay: float = 0.0,
-            force: bool = False) -> None:
+    def end(
+        self, results: Any = None, delay: float = 0.0, force: bool = False
+    ) -> None:
         """Commences Activity shutdown and delivers results to the ba.Session.
 
         'delay' is the time delay before the Activity actually ends
@@ -517,8 +525,8 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         Subclasses can override this if the activity's player class
         requires a custom constructor; otherwise it will be called with
         no args. Note that the player object should not be used at this
-        point as it is not yet fully wired up; wait for on_player_join()
-        for that.
+        point as it is not yet fully wired up; wait for
+        ba.Activity.on_player_join() for that.
         """
         del sessionplayer  # Unused.
         player = self._playertype()
@@ -548,7 +556,8 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         sessionplayer.setactivity(self)
         with _ba.Context(self):
             sessionplayer.activityplayer = player = self.create_player(
-                sessionplayer)
+                sessionplayer
+            )
             player.postinit(sessionplayer)
 
             assert player not in team.players
@@ -659,7 +668,8 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         self._teams_that_left.append(weakref.ref(team))
 
     def _reset_session_player_for_no_activity(
-            self, sessionplayer: ba.SessionPlayer) -> None:
+        self, sessionplayer: ba.SessionPlayer
+    ) -> None:
 
         # Let's be extra-defensive here: killing a node/input-call/etc
         # could trigger user-code resulting in errors, but we would still
@@ -669,18 +679,21 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         except Exception:
             print_exception(
                 f'Error resetting SessionPlayer node on {sessionplayer}'
-                f' for {self}.')
+                f' for {self}.'
+            )
         try:
             sessionplayer.resetinput()
         except Exception:
             print_exception(
                 f'Error resetting SessionPlayer input on {sessionplayer}'
-                f' for {self}.')
+                f' for {self}.'
+            )
 
         # These should never fail I think...
         sessionplayer.setactivity(None)
         sessionplayer.activityplayer = None
 
+    # noinspection PyUnresolvedReferences
     def _setup_player_and_team_types(self) -> None:
         """Pull player and team types from our typing.Generic params."""
 
@@ -695,21 +708,26 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
             self._playertype = type(self).__orig_bases__[-1].__args__[0]
             if not isinstance(self._playertype, type):
                 self._playertype = Player
-                print(f'ERROR: {type(self)} was not passed a Player'
-                      f' type argument; please explicitly pass ba.Player'
-                      f' if you do not want to override it.')
+                print(
+                    f'ERROR: {type(self)} was not passed a Player'
+                    f' type argument; please explicitly pass ba.Player'
+                    f' if you do not want to override it.'
+                )
             self._teamtype = type(self).__orig_bases__[-1].__args__[1]
             if not isinstance(self._teamtype, type):
                 self._teamtype = Team
-                print(f'ERROR: {type(self)} was not passed a Team'
-                      f' type argument; please explicitly pass ba.Team'
-                      f' if you do not want to override it.')
+                print(
+                    f'ERROR: {type(self)} was not passed a Team'
+                    f' type argument; please explicitly pass ba.Team'
+                    f' if you do not want to override it.'
+                )
         assert issubclass(self._playertype, Player)
         assert issubclass(self._teamtype, Team)
 
     @classmethod
-    def _check_activity_death(cls, activity_ref: weakref.ref[Activity],
-                              counter: list[int]) -> None:
+    def _check_activity_death(
+        cls, activity_ref: weakref.ref[Activity], counter: list[int]
+    ) -> None:
         """Sanity check to make sure an Activity was destroyed properly.
 
         Receives a weakref to a ba.Activity which should have torn itself
@@ -717,27 +735,20 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
         and/or print debugging info if the Activity still exists.
         """
         try:
-            import gc
-            import types
             activity = activity_ref()
-            print('ERROR: Activity is not dying when expected:', activity,
-                  '(warning ' + str(counter[0] + 1) + ')')
-            print('This means something is still strong-referencing it.')
+            print(
+                'ERROR: Activity is not dying when expected:',
+                activity,
+                '(warning ' + str(counter[0] + 1) + ')',
+            )
+            print(
+                'This means something is still strong-referencing it.\n'
+                'Check out methods such as efro.debug.printrefs() to'
+                ' help debug this sort of thing.'
+            )
+            # Note: no longer calling gc.get_referrers() here because it's
+            # usage can bork stuff. (see notes at top of efro.debug)
             counter[0] += 1
-
-            # FIXME: Running the code below shows us references but winds up
-            #  keeping the object alive; need to figure out why.
-            #  For now we just print refs if the count gets to 3, and then we
-            #  kill the app at 4 so it doesn't matter anyway.
-            if counter[0] == 3:
-                print('Activity references for', activity, ':')
-                refs = list(gc.get_referrers(activity))
-                i = 1
-                for ref in refs:
-                    if isinstance(ref, types.FrameType):
-                        continue
-                    print('  reference', i, ':', ref)
-                    i += 1
             if counter[0] == 4:
                 print('Killing app due to stuck activity... :-(')
                 _ba.quit()
@@ -788,8 +799,9 @@ class Activity(DependencyComponent, Generic[PlayerType, TeamType]):
                 try:
                     actor.on_expire()
                 except Exception:
-                    print_exception(f'Error in Actor.on_expire()'
-                                    f' for {actor_ref()}.')
+                    print_exception(
+                        f'Error in Actor.on_expire()' f' for {actor_ref()}.'
+                    )
 
     def _expire_players(self) -> None:
 

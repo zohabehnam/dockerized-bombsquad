@@ -6,25 +6,27 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import _ba
 import ba
+import ba.internal
 from bastd.ui import popup
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Optional
+    from typing import Any, Callable
 
 
 class TournamentEntryWindow(popup.PopupWindow):
     """Popup window for entering tournaments."""
 
-    def __init__(self,
-                 tournament_id: str,
-                 tournament_activity: ba.Activity = None,
-                 position: tuple[float, float] = (0.0, 0.0),
-                 delegate: Any = None,
-                 scale: float = None,
-                 offset: tuple[float, float] = (0.0, 0.0),
-                 on_close_call: Callable[[], Any] = None):
+    def __init__(
+        self,
+        tournament_id: str,
+        tournament_activity: ba.Activity | None = None,
+        position: tuple[float, float] = (0.0, 0.0),
+        delegate: Any = None,
+        scale: float | None = None,
+        offset: tuple[float, float] = (0.0, 0.0),
+        on_close_call: Callable[[], Any] | None = None,
+    ):
         # Needs some tidying.
         # pylint: disable=too-many-branches
         # pylint: disable=too-many-statements
@@ -32,8 +34,9 @@ class TournamentEntryWindow(popup.PopupWindow):
         ba.set_analytics_screen('Tournament Entry Window')
 
         self._tournament_id = tournament_id
-        self._tournament_info = (
-            ba.app.accounts.tournament_info[self._tournament_id])
+        self._tournament_info = ba.app.accounts_v1.tournament_info[
+            self._tournament_id
+        ]
 
         # Set a few vars depending on the tourney fee.
         self._fee = self._tournament_info['fee']
@@ -56,13 +59,18 @@ class TournamentEntryWindow(popup.PopupWindow):
             self._purchase_name = 'tournament_entry_0'
             self._purchase_price_name = 'price.tournament_entry_0'
 
-        self._purchase_price: Optional[int] = None
+        self._purchase_price: int | None = None
 
         self._on_close_call = on_close_call
         if scale is None:
             uiscale = ba.app.ui.uiscale
-            scale = (2.3 if uiscale is ba.UIScale.SMALL else
-                     1.65 if uiscale is ba.UIScale.MEDIUM else 1.23)
+            scale = (
+                2.3
+                if uiscale is ba.UIScale.SMALL
+                else 1.65
+                if uiscale is ba.UIScale.MEDIUM
+                else 1.23
+            )
         self._delegate = delegate
         self._transitioning_out = False
 
@@ -74,13 +82,15 @@ class TournamentEntryWindow(popup.PopupWindow):
         bg_color = (0.5, 0.4, 0.6)
 
         # Creates our root_widget.
-        popup.PopupWindow.__init__(self,
-                                   position=position,
-                                   size=(self._width, self._height),
-                                   scale=scale,
-                                   bg_color=bg_color,
-                                   offset=offset,
-                                   toolbar_visibility='menu_currency')
+        popup.PopupWindow.__init__(
+            self,
+            position=position,
+            size=(self._width, self._height),
+            scale=scale,
+            bg_color=bg_color,
+            offset=offset,
+            toolbar_visibility='menu_currency',
+        )
 
         self._last_ad_press_time = -9999.0
         self._last_ticket_press_time = -9999.0
@@ -88,20 +98,22 @@ class TournamentEntryWindow(popup.PopupWindow):
         self._launched = False
 
         # Show the ad button only if we support ads *and* it has a level 1 fee.
-        self._do_ad_btn = (_ba.has_video_ads() and self._allow_ads)
+        self._do_ad_btn = ba.internal.has_video_ads() and self._allow_ads
 
         x_offs = 0 if self._do_ad_btn else 85
 
-        self._cancel_button = ba.buttonwidget(parent=self.root_widget,
-                                              position=(20, self._height - 34),
-                                              size=(60, 60),
-                                              scale=0.5,
-                                              label='',
-                                              color=bg_color,
-                                              on_activate_call=self._on_cancel,
-                                              autoselect=True,
-                                              icon=ba.gettexture('crossOut'),
-                                              iconscale=1.2)
+        self._cancel_button = ba.buttonwidget(
+            parent=self.root_widget,
+            position=(20, self._height - 34),
+            size=(60, 60),
+            scale=0.5,
+            label='',
+            color=bg_color,
+            on_activate_call=self._on_cancel,
+            autoselect=True,
+            icon=ba.gettexture('crossOut'),
+            iconscale=1.2,
+        )
 
         self._title_text = ba.textwidget(
             parent=self.root_widget,
@@ -112,7 +124,8 @@ class TournamentEntryWindow(popup.PopupWindow):
             scale=0.6,
             text=ba.Lstr(resource='tournamentEntryText'),
             maxwidth=180,
-            color=(1, 1, 1, 0.4))
+            color=(1, 1, 1, 0.4),
+        )
 
         btn = self._pay_with_tickets_button = ba.buttonwidget(
             parent=self.root_widget,
@@ -121,14 +134,17 @@ class TournamentEntryWindow(popup.PopupWindow):
             button_type='square',
             size=(120, 120),
             label='',
-            on_activate_call=self._on_pay_with_tickets_press)
+            on_activate_call=self._on_pay_with_tickets_press,
+        )
         self._ticket_img_pos = (50 + x_offs, 94)
         self._ticket_img_pos_free = (50 + x_offs, 80)
-        self._ticket_img = ba.imagewidget(parent=self.root_widget,
-                                          draw_controller=btn,
-                                          size=(80, 80),
-                                          position=self._ticket_img_pos,
-                                          texture=ba.gettexture('tickets'))
+        self._ticket_img = ba.imagewidget(
+            parent=self.root_widget,
+            draw_controller=btn,
+            size=(80, 80),
+            position=self._ticket_img_pos,
+            texture=ba.gettexture('tickets'),
+        )
         self._ticket_cost_text_position = (87 + x_offs, 88)
         self._ticket_cost_text_position_free = (87 + x_offs, 120)
         self._ticket_cost_text = ba.textwidget(
@@ -141,7 +157,8 @@ class TournamentEntryWindow(popup.PopupWindow):
             scale=0.6,
             text='',
             maxwidth=95,
-            color=(0, 1, 0))
+            color=(0, 1, 0),
+        )
         self._free_plays_remaining_text = ba.textwidget(
             parent=self.root_widget,
             draw_controller=btn,
@@ -152,8 +169,9 @@ class TournamentEntryWindow(popup.PopupWindow):
             scale=0.33,
             text='',
             maxwidth=95,
-            color=(0, 0.8, 0))
-        self._pay_with_ad_btn: Optional[ba.Widget]
+            color=(0, 0.8, 0),
+        )
+        self._pay_with_ad_btn: ba.Widget | None
         if self._do_ad_btn:
             btn = self._pay_with_ad_btn = ba.buttonwidget(
                 parent=self.root_widget,
@@ -162,33 +180,42 @@ class TournamentEntryWindow(popup.PopupWindow):
                 button_type='square',
                 size=(120, 120),
                 label='',
-                on_activate_call=self._on_pay_with_ad_press)
-            self._pay_with_ad_img = ba.imagewidget(parent=self.root_widget,
-                                                   draw_controller=btn,
-                                                   size=(80, 80),
-                                                   position=(210, 94),
-                                                   texture=ba.gettexture('tv'))
+                on_activate_call=self._on_pay_with_ad_press,
+            )
+            self._pay_with_ad_img = ba.imagewidget(
+                parent=self.root_widget,
+                draw_controller=btn,
+                size=(80, 80),
+                position=(210, 94),
+                texture=ba.gettexture('tv'),
+            )
 
             self._ad_text_position = (251, 88)
             self._ad_text_position_remaining = (251, 92)
             have_ad_tries_remaining = (
-                self._tournament_info['adTriesRemaining'] is not None)
+                self._tournament_info['adTriesRemaining'] is not None
+            )
             self._ad_text = ba.textwidget(
                 parent=self.root_widget,
                 draw_controller=btn,
                 position=self._ad_text_position_remaining
-                if have_ad_tries_remaining else self._ad_text_position,
+                if have_ad_tries_remaining
+                else self._ad_text_position,
                 size=(0, 0),
                 h_align='center',
                 v_align='center',
                 scale=0.6,
-                text=ba.Lstr(resource='watchAVideoText',
-                             fallback_resource='watchAnAdText'),
+                # Note: AdMob now requires rewarded ad usage
+                # specifically says 'Ad' in it.
+                text=ba.Lstr(resource='watchAnAdText'),
                 maxwidth=95,
-                color=(0, 1, 0))
+                color=(0, 1, 0),
+            )
             ad_plays_remaining_text = (
-                '' if not have_ad_tries_remaining else '' +
-                str(self._tournament_info['adTriesRemaining']))
+                ''
+                if not have_ad_tries_remaining
+                else '' + str(self._tournament_info['adTriesRemaining'])
+            )
             self._ad_plays_remaining_text = ba.textwidget(
                 parent=self.root_widget,
                 draw_controller=btn,
@@ -199,23 +226,27 @@ class TournamentEntryWindow(popup.PopupWindow):
                 scale=0.33,
                 text=ad_plays_remaining_text,
                 maxwidth=95,
-                color=(0, 0.8, 0))
+                color=(0, 0.8, 0),
+            )
 
-            ba.textwidget(parent=self.root_widget,
-                          position=(self._width * 0.5, 120),
-                          size=(0, 0),
-                          h_align='center',
-                          v_align='center',
-                          scale=0.6,
-                          text=ba.Lstr(resource='orText',
-                                       subs=[('${A}', ''), ('${B}', '')]),
-                          maxwidth=35,
-                          color=(1, 1, 1, 0.5))
+            ba.textwidget(
+                parent=self.root_widget,
+                position=(self._width * 0.5, 120),
+                size=(0, 0),
+                h_align='center',
+                v_align='center',
+                scale=0.6,
+                text=ba.Lstr(
+                    resource='orText', subs=[('${A}', ''), ('${B}', '')]
+                ),
+                maxwidth=35,
+                color=(1, 1, 1, 0.5),
+            )
         else:
             self._pay_with_ad_btn = None
 
-        self._get_tickets_button: Optional[ba.Widget] = None
-        self._ticket_count_text: Optional[ba.Widget] = None
+        self._get_tickets_button: ba.Widget | None = None
+        self._ticket_count_text: ba.Widget | None = None
         if not ba.app.ui.use_toolbars:
             if ba.app.allow_ticket_purchases:
                 self._get_tickets_button = ba.buttonwidget(
@@ -227,7 +258,8 @@ class TournamentEntryWindow(popup.PopupWindow):
                     textcolor=(0.2, 1, 0.2),
                     label=ba.charstr(ba.SpecialChar.TICKET),
                     color=(0.65, 0.5, 0.8),
-                    on_activate_call=self._on_get_tickets_press)
+                    on_activate_call=self._on_get_tickets_press,
+                )
             else:
                 self._ticket_count_text = ba.textwidget(
                     parent=self.root_widget,
@@ -235,12 +267,14 @@ class TournamentEntryWindow(popup.PopupWindow):
                     position=(self._width - 190 + 125, self._height - 34),
                     color=(0.2, 1, 0.2),
                     h_align='center',
-                    v_align='center')
+                    v_align='center',
+                )
 
         self._seconds_remaining = None
 
-        ba.containerwidget(edit=self.root_widget,
-                           cancel_button=self._cancel_button)
+        ba.containerwidget(
+            edit=self.root_widget, cancel_button=self._cancel_button
+        )
 
         # Let's also ask the server for info about this tournament
         # (time remaining, etc) so we can show the user time remaining,
@@ -268,23 +302,39 @@ class TournamentEntryWindow(popup.PopupWindow):
             scale=0.45,
             flatness=1.0,
             maxwidth=100,
-            color=(0.7, 0.7, 0.7))
+            color=(0.7, 0.7, 0.7),
+        )
 
-        self._last_query_time: Optional[float] = None
+        self._last_query_time: float | None = None
 
         # If there seems to be a relatively-recent valid cached info for this
         # tournament, use it. Otherwise we'll kick off a query ourselves.
-        if (self._tournament_id in ba.app.accounts.tournament_info and
-                ba.app.accounts.tournament_info[self._tournament_id]['valid']
-                and (ba.time(ba.TimeType.REAL, ba.TimeFormat.MILLISECONDS) -
-                     ba.app.accounts.tournament_info[self._tournament_id]
-                     ['timeReceived'] < 1000 * 60 * 5)):
+        if (
+            self._tournament_id in ba.app.accounts_v1.tournament_info
+            and ba.app.accounts_v1.tournament_info[self._tournament_id]['valid']
+            and (
+                ba.time(ba.TimeType.REAL, ba.TimeFormat.MILLISECONDS)
+                - ba.app.accounts_v1.tournament_info[self._tournament_id][
+                    'timeReceived'
+                ]
+                < 1000 * 60 * 5
+            )
+        ):
             try:
-                info = ba.app.accounts.tournament_info[self._tournament_id]
+                info = ba.app.accounts_v1.tournament_info[self._tournament_id]
                 self._seconds_remaining = max(
-                    0, info['timeRemaining'] - int(
-                        (ba.time(ba.TimeType.REAL, ba.TimeFormat.MILLISECONDS)
-                         - info['timeReceived']) / 1000))
+                    0,
+                    info['timeRemaining']
+                    - int(
+                        (
+                            ba.time(
+                                ba.TimeType.REAL, ba.TimeFormat.MILLISECONDS
+                            )
+                            - info['timeReceived']
+                        )
+                        / 1000
+                    ),
+                )
                 self._have_valid_data = True
                 self._last_query_time = ba.time(ba.TimeType.REAL)
             except Exception:
@@ -295,22 +345,26 @@ class TournamentEntryWindow(popup.PopupWindow):
 
         self._fg_state = ba.app.fg_state
         self._running_query = False
-        self._update_timer = ba.Timer(1.0,
-                                      ba.WeakCall(self._update),
-                                      repeat=True,
-                                      timetype=ba.TimeType.REAL)
+        self._update_timer = ba.Timer(
+            1.0,
+            ba.WeakCall(self._update),
+            repeat=True,
+            timetype=ba.TimeType.REAL,
+        )
         self._update()
         self._restore_state()
 
-    def _on_tournament_query_response(self, data: Optional[dict[str,
-                                                                Any]]) -> None:
-        accounts = ba.app.accounts
+    def _on_tournament_query_response(
+        self, data: dict[str, Any] | None
+    ) -> None:
+        accounts = ba.app.accounts_v1
         self._running_query = False
         if data is not None:
             data = data['t']  # This used to be the whole payload.
             accounts.cache_tournament_info(data)
             self._seconds_remaining = accounts.tournament_info[
-                self._tournament_id]['timeRemaining']
+                self._tournament_id
+            ]['timeRemaining']
             self._have_valid_data = True
 
     def _save_state(self) -> None:
@@ -345,21 +399,25 @@ class TournamentEntryWindow(popup.PopupWindow):
 
         # If we need to run another tournament query, do so.
         if not self._running_query and (
-            (self._last_query_time is None) or (not self._have_valid_data) or
-            (ba.time(ba.TimeType.REAL) - self._last_query_time > 30.0)):
-            _ba.tournament_query(args={
-                'source':
-                    'entry window' if self._tournament_activity is None else
-                    'retry entry window'
-            },
-                                 callback=ba.WeakCall(
-                                     self._on_tournament_query_response))
+            (self._last_query_time is None)
+            or (not self._have_valid_data)
+            or (ba.time(ba.TimeType.REAL) - self._last_query_time > 30.0)
+        ):
+            ba.internal.tournament_query(
+                args={
+                    'source': 'entry window'
+                    if self._tournament_activity is None
+                    else 'retry entry window'
+                },
+                callback=ba.WeakCall(self._on_tournament_query_response),
+            )
             self._last_query_time = ba.time(ba.TimeType.REAL)
             self._running_query = True
 
         # Grab the latest info on our tourney.
-        self._tournament_info = ba.app.accounts.tournament_info[
-            self._tournament_id]
+        self._tournament_info = ba.app.accounts_v1.tournament_info[
+            self._tournament_id
+        ]
 
         # If we don't have valid data always show a '-' for time.
         if not self._have_valid_data:
@@ -367,70 +425,106 @@ class TournamentEntryWindow(popup.PopupWindow):
         else:
             if self._seconds_remaining is not None:
                 self._seconds_remaining = max(0, self._seconds_remaining - 1)
-                ba.textwidget(edit=self._time_remaining_text,
-                              text=ba.timestring(
-                                  self._seconds_remaining * 1000,
-                                  centi=False,
-                                  timeformat=ba.TimeFormat.MILLISECONDS))
+                ba.textwidget(
+                    edit=self._time_remaining_text,
+                    text=ba.timestring(
+                        self._seconds_remaining * 1000,
+                        centi=False,
+                        timeformat=ba.TimeFormat.MILLISECONDS,
+                    ),
+                )
 
         # Keep price up-to-date and update the button with it.
-        self._purchase_price = _ba.get_account_misc_read_val(
-            self._purchase_price_name, None)
+        self._purchase_price = ba.internal.get_v1_account_misc_read_val(
+            self._purchase_price_name, None
+        )
 
         ba.textwidget(
             edit=self._ticket_cost_text,
-            text=(ba.Lstr(resource='getTicketsWindow.freeText')
-                  if self._purchase_price == 0 else ba.Lstr(
-                      resource='getTicketsWindow.ticketsText',
-                      subs=[('${COUNT}', str(self._purchase_price)
-                             if self._purchase_price is not None else '?')])),
+            text=(
+                ba.Lstr(resource='getTicketsWindow.freeText')
+                if self._purchase_price == 0
+                else ba.Lstr(
+                    resource='getTicketsWindow.ticketsText',
+                    subs=[
+                        (
+                            '${COUNT}',
+                            str(self._purchase_price)
+                            if self._purchase_price is not None
+                            else '?',
+                        )
+                    ],
+                )
+            ),
             position=self._ticket_cost_text_position_free
-            if self._purchase_price == 0 else self._ticket_cost_text_position,
-            scale=1.0 if self._purchase_price == 0 else 0.6)
+            if self._purchase_price == 0
+            else self._ticket_cost_text_position,
+            scale=1.0 if self._purchase_price == 0 else 0.6,
+        )
 
         ba.textwidget(
             edit=self._free_plays_remaining_text,
-            text='' if
-            (self._tournament_info['freeTriesRemaining'] in [None, 0]
-             or self._purchase_price != 0) else '' +
-            str(self._tournament_info['freeTriesRemaining']))
+            text=''
+            if (
+                self._tournament_info['freeTriesRemaining'] in [None, 0]
+                or self._purchase_price != 0
+            )
+            else '' + str(self._tournament_info['freeTriesRemaining']),
+        )
 
-        ba.imagewidget(edit=self._ticket_img,
-                       opacity=0.2 if self._purchase_price == 0 else 1.0,
-                       position=self._ticket_img_pos_free
-                       if self._purchase_price == 0 else self._ticket_img_pos)
+        ba.imagewidget(
+            edit=self._ticket_img,
+            opacity=0.2 if self._purchase_price == 0 else 1.0,
+            position=self._ticket_img_pos_free
+            if self._purchase_price == 0
+            else self._ticket_img_pos,
+        )
 
         if self._do_ad_btn:
-            enabled = _ba.have_incentivized_ad()
+            enabled = ba.internal.have_incentivized_ad()
             have_ad_tries_remaining = (
                 self._tournament_info['adTriesRemaining'] is not None
-                and self._tournament_info['adTriesRemaining'] > 0)
-            ba.textwidget(edit=self._ad_text,
-                          position=self._ad_text_position_remaining if
-                          have_ad_tries_remaining else self._ad_text_position,
-                          color=(0, 1, 0) if enabled else (0.5, 0.5, 0.5))
-            ba.imagewidget(edit=self._pay_with_ad_img,
-                           opacity=1.0 if enabled else 0.2)
-            ba.buttonwidget(edit=self._pay_with_ad_btn,
-                            color=(0.5, 0.7, 0.2) if enabled else
-                            (0.5, 0.5, 0.5))
+                and self._tournament_info['adTriesRemaining'] > 0
+            )
+            ba.textwidget(
+                edit=self._ad_text,
+                position=self._ad_text_position_remaining
+                if have_ad_tries_remaining
+                else self._ad_text_position,
+                color=(0, 1, 0) if enabled else (0.5, 0.5, 0.5),
+            )
+            ba.imagewidget(
+                edit=self._pay_with_ad_img, opacity=1.0 if enabled else 0.2
+            )
+            ba.buttonwidget(
+                edit=self._pay_with_ad_btn,
+                color=(0.5, 0.7, 0.2) if enabled else (0.5, 0.5, 0.5),
+            )
             ad_plays_remaining_text = (
-                '' if not have_ad_tries_remaining else '' +
-                str(self._tournament_info['adTriesRemaining']))
-            ba.textwidget(edit=self._ad_plays_remaining_text,
-                          text=ad_plays_remaining_text,
-                          color=(0, 0.8, 0) if enabled else (0.4, 0.4, 0.4))
+                ''
+                if not have_ad_tries_remaining
+                else '' + str(self._tournament_info['adTriesRemaining'])
+            )
+            ba.textwidget(
+                edit=self._ad_plays_remaining_text,
+                text=ad_plays_remaining_text,
+                color=(0, 0.8, 0) if enabled else (0.4, 0.4, 0.4),
+            )
 
         try:
-            t_str = str(_ba.get_account_ticket_count())
+            t_str = str(ba.internal.get_v1_account_ticket_count())
         except Exception:
             t_str = '?'
         if self._get_tickets_button:
-            ba.buttonwidget(edit=self._get_tickets_button,
-                            label=ba.charstr(ba.SpecialChar.TICKET) + t_str)
+            ba.buttonwidget(
+                edit=self._get_tickets_button,
+                label=ba.charstr(ba.SpecialChar.TICKET) + t_str,
+            )
         if self._ticket_count_text:
-            ba.textwidget(edit=self._ticket_count_text,
-                          text=ba.charstr(ba.SpecialChar.TICKET) + t_str)
+            ba.textwidget(
+                edit=self._ticket_count_text,
+                text=ba.charstr(ba.SpecialChar.TICKET) + t_str,
+            )
 
     def _launch(self) -> None:
         if self._launched:
@@ -441,17 +535,23 @@ class TournamentEntryWindow(popup.PopupWindow):
         # If they gave us an existing activity, just restart it.
         if self._tournament_activity is not None:
             try:
-                ba.timer(0.1,
-                         lambda: ba.playsound(ba.getsound('cashRegister')),
-                         timetype=ba.TimeType.REAL)
+                ba.timer(
+                    0.1,
+                    lambda: ba.playsound(ba.getsound('cashRegister')),
+                    timetype=ba.TimeType.REAL,
+                )
                 with ba.Context(self._tournament_activity):
-                    self._tournament_activity.end({'outcome': 'restart'},
-                                                  force=True)
+                    self._tournament_activity.end(
+                        {'outcome': 'restart'}, force=True
+                    )
                 ba.timer(0.3, self._transition_out, timetype=ba.TimeType.REAL)
                 launched = True
-                ba.screenmessage(ba.Lstr(translate=('serverResponses',
-                                                    'Entering tournament...')),
-                                 color=(0, 1, 0))
+                ba.screenmessage(
+                    ba.Lstr(
+                        translate=('serverResponses', 'Entering tournament...')
+                    ),
+                    color=(0, 1, 0),
+                )
 
             # We can hit exceptions here if _tournament_activity ends before
             # our restart attempt happens.
@@ -464,9 +564,11 @@ class TournamentEntryWindow(popup.PopupWindow):
         # If we had no existing activity (or were unable to restart it)
         # launch a new session.
         if not launched:
-            ba.timer(0.1,
-                     lambda: ba.playsound(ba.getsound('cashRegister')),
-                     timetype=ba.TimeType.REAL)
+            ba.timer(
+                0.1,
+                lambda: ba.playsound(ba.getsound('cashRegister')),
+                timetype=ba.TimeType.REAL,
+            )
             ba.timer(
                 1.0,
                 lambda: ba.app.launch_coop_game(
@@ -474,13 +576,18 @@ class TournamentEntryWindow(popup.PopupWindow):
                     args={
                         'min_players': self._tournament_info['minPlayers'],
                         'max_players': self._tournament_info['maxPlayers'],
-                        'tournament_id': self._tournament_id
-                    }),
-                timetype=ba.TimeType.REAL)
+                        'tournament_id': self._tournament_id,
+                    },
+                ),
+                timetype=ba.TimeType.REAL,
+            )
             ba.timer(0.7, self._transition_out, timetype=ba.TimeType.REAL)
-            ba.screenmessage(ba.Lstr(translate=('serverResponses',
-                                                'Entering tournament...')),
-                             color=(0, 1, 0))
+            ba.screenmessage(
+                ba.Lstr(
+                    translate=('serverResponses', 'Entering tournament...')
+                ),
+                color=(0, 1, 0),
+            )
 
     def _on_pay_with_tickets_press(self) -> None:
         from bastd.ui import getcurrency
@@ -490,29 +597,32 @@ class TournamentEntryWindow(popup.PopupWindow):
             return
 
         if not self._have_valid_data:
-            ba.screenmessage(ba.Lstr(resource='tournamentCheckingStateText'),
-                             color=(1, 0, 0))
+            ba.screenmessage(
+                ba.Lstr(resource='tournamentCheckingStateText'), color=(1, 0, 0)
+            )
             ba.playsound(ba.getsound('error'))
             return
 
         # If we don't have a price.
         if self._purchase_price is None:
-            ba.screenmessage(ba.Lstr(resource='tournamentCheckingStateText'),
-                             color=(1, 0, 0))
+            ba.screenmessage(
+                ba.Lstr(resource='tournamentCheckingStateText'), color=(1, 0, 0)
+            )
             ba.playsound(ba.getsound('error'))
             return
 
         # Deny if it looks like the tourney has ended.
         if self._seconds_remaining == 0:
-            ba.screenmessage(ba.Lstr(resource='tournamentEndedText'),
-                             color=(1, 0, 0))
+            ba.screenmessage(
+                ba.Lstr(resource='tournamentEndedText'), color=(1, 0, 0)
+            )
             ba.playsound(ba.getsound('error'))
             return
 
         # Deny if we don't have enough tickets.
-        ticket_count: Optional[int]
+        ticket_count: int | None
         try:
-            ticket_count = _ba.get_account_ticket_count()
+            ticket_count = ba.internal.get_v1_account_ticket_count()
         except Exception:
             # FIXME: should add a ba.NotSignedInError we can use here.
             ticket_count = None
@@ -520,20 +630,23 @@ class TournamentEntryWindow(popup.PopupWindow):
         if ticket_count is not None and ticket_count < ticket_cost:
             getcurrency.show_get_tickets_prompt()
             ba.playsound(ba.getsound('error'))
+            self._transition_out()
             return
 
         cur_time = ba.time(ba.TimeType.REAL, ba.TimeFormat.MILLISECONDS)
         self._last_ticket_press_time = cur_time
         assert isinstance(ticket_cost, int)
-        _ba.in_game_purchase(self._purchase_name, ticket_cost)
+        ba.internal.in_game_purchase(self._purchase_name, ticket_cost)
 
         self._entering = True
-        _ba.add_transaction({
-            'type': 'ENTER_TOURNAMENT',
-            'fee': self._fee,
-            'tournamentID': self._tournament_id
-        })
-        _ba.run_transactions()
+        ba.internal.add_transaction(
+            {
+                'type': 'ENTER_TOURNAMENT',
+                'fee': self._fee,
+                'tournamentID': self._tournament_id,
+            }
+        )
+        ba.internal.run_transactions()
         self._launch()
 
     def _on_pay_with_ad_press(self) -> None:
@@ -543,30 +656,33 @@ class TournamentEntryWindow(popup.PopupWindow):
             return
 
         if not self._have_valid_data:
-            ba.screenmessage(ba.Lstr(resource='tournamentCheckingStateText'),
-                             color=(1, 0, 0))
+            ba.screenmessage(
+                ba.Lstr(resource='tournamentCheckingStateText'), color=(1, 0, 0)
+            )
             ba.playsound(ba.getsound('error'))
             return
 
         # Deny if it looks like the tourney has ended.
         if self._seconds_remaining == 0:
-            ba.screenmessage(ba.Lstr(resource='tournamentEndedText'),
-                             color=(1, 0, 0))
+            ba.screenmessage(
+                ba.Lstr(resource='tournamentEndedText'), color=(1, 0, 0)
+            )
             ba.playsound(ba.getsound('error'))
             return
 
         cur_time = ba.time(ba.TimeType.REAL)
         if cur_time - self._last_ad_press_time > 5.0:
             self._last_ad_press_time = cur_time
-            _ba.app.ads.show_ad_2('tournament_entry',
-                                  on_completion_call=ba.WeakCall(
-                                      self._on_ad_complete))
+            ba.app.ads.show_ad_2(
+                'tournament_entry',
+                on_completion_call=ba.WeakCall(self._on_ad_complete),
+            )
 
     def _on_ad_complete(self, actually_showed: bool) -> None:
 
         # Make sure any transactions the ad added got locally applied
         # (rewards added, etc.).
-        _ba.run_transactions()
+        ba.internal.run_transactions()
 
         # If we're already entering the tourney, ignore.
         if self._entering:
@@ -578,19 +694,21 @@ class TournamentEntryWindow(popup.PopupWindow):
         # This should have awarded us the tournament_entry_ad purchase;
         # make sure that's present.
         # (otherwise the server will ignore our tournament entry anyway)
-        if not _ba.get_purchased('tournament_entry_ad'):
+        if not ba.internal.get_purchased('tournament_entry_ad'):
             print('no tournament_entry_ad purchase present in _on_ad_complete')
             ba.screenmessage(ba.Lstr(resource='errorText'), color=(1, 0, 0))
             ba.playsound(ba.getsound('error'))
             return
 
         self._entering = True
-        _ba.add_transaction({
-            'type': 'ENTER_TOURNAMENT',
-            'fee': 'ad',
-            'tournamentID': self._tournament_id
-        })
-        _ba.run_transactions()
+        ba.internal.add_transaction(
+            {
+                'type': 'ENTER_TOURNAMENT',
+                'fee': 'ad',
+                'tournamentID': self._tournament_id,
+            }
+        )
+        ba.internal.run_transactions()
         self._launch()
 
     def _on_get_tickets_press(self) -> None:
@@ -602,8 +720,9 @@ class TournamentEntryWindow(popup.PopupWindow):
 
         # Bring up get-tickets window and then kill ourself (we're on the
         # overlay layer so we'd show up above it).
-        getcurrency.GetCurrencyWindow(modal=True,
-                                      origin_widget=self._get_tickets_button)
+        getcurrency.GetCurrencyWindow(
+            modal=True, origin_widget=self._get_tickets_button
+        )
         self._transition_out()
 
     def _on_cancel(self) -> None:
@@ -611,10 +730,15 @@ class TournamentEntryWindow(popup.PopupWindow):
         # Don't allow canceling for several seconds after poking an enter
         # button if it looks like we're waiting on a purchase or entering
         # the tournament.
-        if ((ba.time(ba.TimeType.REAL, ba.TimeFormat.MILLISECONDS) -
-             self._last_ticket_press_time < 6000) and
-            (_ba.have_outstanding_transactions()
-             or _ba.get_purchased(self._purchase_name) or self._entering)):
+        if (
+            ba.time(ba.TimeType.REAL, ba.TimeFormat.MILLISECONDS)
+            - self._last_ticket_press_time
+            < 6000
+        ) and (
+            ba.internal.have_outstanding_transactions()
+            or ba.internal.get_purchased(self._purchase_name)
+            or self._entering
+        ):
             ba.playsound(ba.getsound('error'))
             return
         self._transition_out()

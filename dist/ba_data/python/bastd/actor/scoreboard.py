@@ -10,13 +10,19 @@ from typing import TYPE_CHECKING
 import ba
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Sequence, Union
+    from typing import Any, Sequence
 
 
 class _Entry:
-
-    def __init__(self, scoreboard: Scoreboard, team: ba.Team, do_cover: bool,
-                 scale: float, label: Optional[ba.Lstr], flash_length: float):
+    def __init__(
+        self,
+        scoreboard: Scoreboard,
+        team: ba.Team,
+        do_cover: bool,
+        scale: float,
+        label: ba.Lstr | None,
+        flash_length: float,
+    ):
         # pylint: disable=too-many-statements
         self._scoreboard = weakref.ref(scoreboard)
         self._do_cover = do_cover
@@ -29,11 +35,11 @@ class _Entry:
         self._bar_tex = self._backing_tex = ba.gettexture('bar')
         self._cover_tex = ba.gettexture('uiAtlas')
         self._model = ba.getmodel('meterTransparent')
-        self._pos: Optional[Sequence[float]] = None
-        self._flash_timer: Optional[ba.Timer] = None
-        self._flash_counter: Optional[int] = None
-        self._flash_colors: Optional[bool] = None
-        self._score: Optional[float] = None
+        self._pos: Sequence[float] | None = None
+        self._flash_timer: ba.Timer | None = None
+        self._flash_counter: int | None = None
+        self._flash_colors: bool | None = None
+        self._score: float | None = None
 
         safe_team_color = ba.safecolor(team.color, target_intensity=1.0)
 
@@ -45,88 +51,97 @@ class _Entry:
             if vrmode:
                 self._backing_color = [0.1 + c * 0.1 for c in safe_team_color]
             else:
-                self._backing_color = [
-                    0.05 + c * 0.17 for c in safe_team_color
-                ]
+                self._backing_color = [0.05 + c * 0.17 for c in safe_team_color]
         else:
             self._backing_color = [0.05 + c * 0.1 for c in safe_team_color]
 
         opacity = (0.8 if vrmode else 0.8) if self._do_cover else 0.5
         self._backing = ba.NodeActor(
-            ba.newnode('image',
-                       attrs={
-                           'scale': (self._width, self._height),
-                           'opacity': opacity,
-                           'color': self._backing_color,
-                           'vr_depth': -3,
-                           'attach': 'topLeft',
-                           'texture': self._backing_tex
-                       }))
+            ba.newnode(
+                'image',
+                attrs={
+                    'scale': (self._width, self._height),
+                    'opacity': opacity,
+                    'color': self._backing_color,
+                    'vr_depth': -3,
+                    'attach': 'topLeft',
+                    'texture': self._backing_tex,
+                },
+            )
+        )
 
         self._barcolor = safe_team_color
         self._bar = ba.NodeActor(
-            ba.newnode('image',
-                       attrs={
-                           'opacity': 0.7,
-                           'color': self._barcolor,
-                           'attach': 'topLeft',
-                           'texture': self._bar_tex
-                       }))
+            ba.newnode(
+                'image',
+                attrs={
+                    'opacity': 0.7,
+                    'color': self._barcolor,
+                    'attach': 'topLeft',
+                    'texture': self._bar_tex,
+                },
+            )
+        )
 
-        self._bar_scale = ba.newnode('combine',
-                                     owner=self._bar.node,
-                                     attrs={
-                                         'size': 2,
-                                         'input0': self._bar_width,
-                                         'input1': self._bar_height
-                                     })
+        self._bar_scale = ba.newnode(
+            'combine',
+            owner=self._bar.node,
+            attrs={
+                'size': 2,
+                'input0': self._bar_width,
+                'input1': self._bar_height,
+            },
+        )
         assert self._bar.node
         self._bar_scale.connectattr('output', self._bar.node, 'scale')
-        self._bar_position = ba.newnode('combine',
-                                        owner=self._bar.node,
-                                        attrs={
-                                            'size': 2,
-                                            'input0': 0,
-                                            'input1': 0
-                                        })
+        self._bar_position = ba.newnode(
+            'combine',
+            owner=self._bar.node,
+            attrs={'size': 2, 'input0': 0, 'input1': 0},
+        )
         self._bar_position.connectattr('output', self._bar.node, 'position')
         self._cover_color = safe_team_color
         if self._do_cover:
             self._cover = ba.NodeActor(
-                ba.newnode('image',
-                           attrs={
-                               'scale':
-                                   (self._width * 1.15, self._height * 1.6),
-                               'opacity': 1.0,
-                               'color': self._cover_color,
-                               'vr_depth': 2,
-                               'attach': 'topLeft',
-                               'texture': self._cover_tex,
-                               'model_transparent': self._model
-                           }))
+                ba.newnode(
+                    'image',
+                    attrs={
+                        'scale': (self._width * 1.15, self._height * 1.6),
+                        'opacity': 1.0,
+                        'color': self._cover_color,
+                        'vr_depth': 2,
+                        'attach': 'topLeft',
+                        'texture': self._cover_tex,
+                        'model_transparent': self._model,
+                    },
+                )
+            )
 
         clr = safe_team_color
         maxwidth = 130.0 * (1.0 - scoreboard.score_split)
-        flatness = ((1.0 if vrmode else 0.5) if self._do_cover else 1.0)
+        flatness = (1.0 if vrmode else 0.5) if self._do_cover else 1.0
         self._score_text = ba.NodeActor(
-            ba.newnode('text',
-                       attrs={
-                           'h_attach': 'left',
-                           'v_attach': 'top',
-                           'h_align': 'right',
-                           'v_align': 'center',
-                           'maxwidth': maxwidth,
-                           'vr_depth': 2,
-                           'scale': self._scale * 0.9,
-                           'text': '',
-                           'shadow': 1.0 if vrmode else 0.5,
-                           'flatness': flatness,
-                           'color': clr
-                       }))
+            ba.newnode(
+                'text',
+                attrs={
+                    'h_attach': 'left',
+                    'v_attach': 'top',
+                    'h_align': 'right',
+                    'v_align': 'center',
+                    'maxwidth': maxwidth,
+                    'vr_depth': 2,
+                    'scale': self._scale * 0.9,
+                    'text': '',
+                    'shadow': 1.0 if vrmode else 0.5,
+                    'flatness': flatness,
+                    'color': clr,
+                },
+            )
+        )
 
         clr = safe_team_color
 
-        team_name_label: Union[str, ba.Lstr]
+        team_name_label: str | ba.Lstr
         if label is not None:
             team_name_label = label
         else:
@@ -148,28 +163,31 @@ class _Entry:
                     team_name_label = team_name_label[:10] + '...'
                 team_name_label = ba.Lstr(value=team_name_label)
 
-        flatness = ((1.0 if vrmode else 0.5) if self._do_cover else 1.0)
+        flatness = (1.0 if vrmode else 0.5) if self._do_cover else 1.0
         self._name_text = ba.NodeActor(
-            ba.newnode('text',
-                       attrs={
-                           'h_attach': 'left',
-                           'v_attach': 'top',
-                           'h_align': 'left',
-                           'v_align': 'center',
-                           'vr_depth': 2,
-                           'scale': self._scale * 0.9,
-                           'shadow': 1.0 if vrmode else 0.5,
-                           'flatness': flatness,
-                           'maxwidth': 130 * scoreboard.score_split,
-                           'text': team_name_label,
-                           'color': clr + (1.0, )
-                       }))
+            ba.newnode(
+                'text',
+                attrs={
+                    'h_attach': 'left',
+                    'v_attach': 'top',
+                    'h_align': 'left',
+                    'v_align': 'center',
+                    'vr_depth': 2,
+                    'scale': self._scale * 0.9,
+                    'shadow': 1.0 if vrmode else 0.5,
+                    'flatness': flatness,
+                    'maxwidth': 130 * scoreboard.score_split,
+                    'text': team_name_label,
+                    'color': clr + (1.0,),
+                },
+            )
+        )
 
     def flash(self, countdown: bool, extra_flash: bool) -> None:
         """Flash momentarily."""
-        self._flash_timer = ba.Timer(0.1,
-                                     ba.WeakCall(self._do_flash),
-                                     repeat=True)
+        self._flash_timer = ba.Timer(
+            0.1, ba.WeakCall(self._do_flash), repeat=True
+        )
         if countdown:
             self._flash_counter = 10
         else:
@@ -186,28 +204,33 @@ class _Entry:
             return
 
         self._pos = tuple(position)
-        self._backing.node.position = (position[0] + self._width / 2,
-                                       position[1] - self._height / 2)
+        self._backing.node.position = (
+            position[0] + self._width / 2,
+            position[1] - self._height / 2,
+        )
         if self._do_cover:
             assert self._cover.node
-            self._cover.node.position = (position[0] + self._width / 2,
-                                         position[1] - self._height / 2)
+            self._cover.node.position = (
+                position[0] + self._width / 2,
+                position[1] - self._height / 2,
+            )
         self._bar_position.input0 = self._pos[0] + self._bar_width / 2
         self._bar_position.input1 = self._pos[1] - self._bar_height / 2
         assert self._score_text.node
-        self._score_text.node.position = (self._pos[0] + self._width -
-                                          7.0 * self._scale,
-                                          self._pos[1] - self._bar_height +
-                                          16.0 * self._scale)
+        self._score_text.node.position = (
+            self._pos[0] + self._width - 7.0 * self._scale,
+            self._pos[1] - self._bar_height + 16.0 * self._scale,
+        )
         assert self._name_text.node
-        self._name_text.node.position = (self._pos[0] + 7.0 * self._scale,
-                                         self._pos[1] - self._bar_height +
-                                         16.0 * self._scale)
+        self._name_text.node.position = (
+            self._pos[0] + 7.0 * self._scale,
+            self._pos[1] - self._bar_height + 16.0 * self._scale,
+        )
 
     def _set_flash_colors(self, flash: bool) -> None:
         self._flash_colors = flash
 
-        def _safesetcolor(node: Optional[ba.Node], val: Any) -> None:
+        def _safesetcolor(node: ba.Node | None, val: Any) -> None:
             if node:
                 node.color = val
 
@@ -215,16 +238,29 @@ class _Entry:
             scale = 2.0
             _safesetcolor(
                 self._backing.node,
-                (self._backing_color[0] * scale, self._backing_color[1] *
-                 scale, self._backing_color[2] * scale))
-            _safesetcolor(self._bar.node,
-                          (self._barcolor[0] * scale, self._barcolor[1] *
-                           scale, self._barcolor[2] * scale))
+                (
+                    self._backing_color[0] * scale,
+                    self._backing_color[1] * scale,
+                    self._backing_color[2] * scale,
+                ),
+            )
+            _safesetcolor(
+                self._bar.node,
+                (
+                    self._barcolor[0] * scale,
+                    self._barcolor[1] * scale,
+                    self._barcolor[2] * scale,
+                ),
+            )
             if self._do_cover:
                 _safesetcolor(
                     self._cover.node,
-                    (self._cover_color[0] * scale, self._cover_color[1] *
-                     scale, self._cover_color[2] * scale))
+                    (
+                        self._cover_color[0] * scale,
+                        self._cover_color[1] * scale,
+                        self._cover_color[2] * scale,
+                    ),
+                )
         else:
             _safesetcolor(self._backing.node, self._backing_color)
             _safesetcolor(self._bar.node, self._barcolor)
@@ -239,12 +275,14 @@ class _Entry:
             self._flash_counter -= 1
             self._set_flash_colors(not self._flash_colors)
 
-    def set_value(self,
-                  score: float,
-                  max_score: float = None,
-                  countdown: bool = False,
-                  flash: bool = True,
-                  show_value: bool = True) -> None:
+    def set_value(
+        self,
+        score: float,
+        max_score: float | None = None,
+        countdown: bool = False,
+        flash: bool = True,
+        show_value: bool = True,
+    ) -> None:
         """Set the value for the scoreboard entry."""
 
         # If we have no score yet, just set it.. otherwise compare
@@ -253,8 +291,11 @@ class _Entry:
             self._score = score
         else:
             if score > self._score or (countdown and score < self._score):
-                extra_flash = (max_score is not None and score >= max_score
-                               and not countdown) or (countdown and score == 0)
+                extra_flash = (
+                    max_score is not None
+                    and score >= max_score
+                    and not countdown
+                ) or (countdown and score == 0)
                 if flash:
                     self.flash(countdown, extra_flash)
             self._score = score
@@ -265,25 +306,26 @@ class _Entry:
             if countdown:
                 self._bar_width = max(
                     2.0 * self._scale,
-                    self._width * (1.0 - (float(score) / max_score)))
+                    self._width * (1.0 - (float(score) / max_score)),
+                )
             else:
                 self._bar_width = max(
                     2.0 * self._scale,
-                    self._width * (min(1.0,
-                                       float(score) / max_score)))
+                    self._width * (min(1.0, float(score) / max_score)),
+                )
 
         cur_width = self._bar_scale.input0
-        ba.animate(self._bar_scale, 'input0', {
-            0.0: cur_width,
-            0.25: self._bar_width
-        })
+        ba.animate(
+            self._bar_scale, 'input0', {0.0: cur_width, 0.25: self._bar_width}
+        )
         self._bar_scale.input1 = self._bar_height
         cur_x = self._bar_position.input0
         assert self._pos is not None
-        ba.animate(self._bar_position, 'input0', {
-            0.0: cur_x,
-            0.25: self._pos[0] + self._bar_width / 2
-        })
+        ba.animate(
+            self._bar_position,
+            'input0',
+            {0.0: cur_x, 0.25: self._pos[0] + self._bar_width / 2},
+        )
         self._bar_position.input1 = self._pos[1] - self._bar_height / 2
         assert self._score_text.node
         if show_value:
@@ -327,7 +369,7 @@ class Scoreboard:
 
     _ENTRYSTORENAME = ba.storagename('entry')
 
-    def __init__(self, label: ba.Lstr = None, score_split: float = 0.7):
+    def __init__(self, label: ba.Lstr | None = None, score_split: float = 0.7):
         """Instantiate a scoreboard.
 
         Label can be something like 'points' and will
@@ -353,13 +395,15 @@ class Scoreboard:
             self._scale = 1.0
             self._flash_length = 1.0
 
-    def set_team_value(self,
-                       team: ba.Team,
-                       score: float,
-                       max_score: float = None,
-                       countdown: bool = False,
-                       flash: bool = True,
-                       show_value: bool = True) -> None:
+    def set_team_value(
+        self,
+        team: ba.Team,
+        score: float,
+        max_score: float | None = None,
+        countdown: bool = False,
+        flash: bool = True,
+        show_value: bool = True,
+    ) -> None:
         """Update the score-board display for the given ba.Team."""
         if team.id not in self._entries:
             self._add_team(team)
@@ -370,21 +414,25 @@ class Scoreboard:
             team.customdata[self._ENTRYSTORENAME] = _EntryProxy(self, team)
 
         # Now set the entry.
-        self._entries[team.id].set_value(score=score,
-                                         max_score=max_score,
-                                         countdown=countdown,
-                                         flash=flash,
-                                         show_value=show_value)
+        self._entries[team.id].set_value(
+            score=score,
+            max_score=max_score,
+            countdown=countdown,
+            flash=flash,
+            show_value=show_value,
+        )
 
     def _add_team(self, team: ba.Team) -> None:
         if team.id in self._entries:
             raise RuntimeError('Duplicate team add')
-        self._entries[team.id] = _Entry(self,
-                                        team,
-                                        do_cover=self._do_cover,
-                                        scale=self._scale,
-                                        label=self._label,
-                                        flash_length=self._flash_length)
+        self._entries[team.id] = _Entry(
+            self,
+            team,
+            do_cover=self._do_cover,
+            scale=self._scale,
+            label=self._label,
+            flash_length=self._flash_length,
+        )
         self._update_teams()
 
     def remove_team(self, team_id: int) -> None:

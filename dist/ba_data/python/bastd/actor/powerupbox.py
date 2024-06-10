@@ -11,7 +11,7 @@ import ba
 from bastd.gameutils import SharedObjects
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Sequence
+    from typing import Any, Sequence
 
 DEFAULT_POWERUP_INTERVAL = 8.0
 
@@ -23,74 +23,73 @@ class _TouchedMessage:
 class PowerupBoxFactory:
     """A collection of media and other resources used by ba.Powerups.
 
-    category: Gameplay Classes
+    Category: **Gameplay Classes**
 
     A single instance of this is shared between all powerups
     and can be retrieved via ba.Powerup.get_factory().
-
-    Attributes:
-
-       model
-          The ba.Model of the powerup box.
-
-       model_simple
-          A simpler ba.Model of the powerup box, for use in shadows, etc.
-
-       tex_bomb
-          Triple-bomb powerup ba.Texture.
-
-       tex_punch
-          Punch powerup ba.Texture.
-
-       tex_ice_bombs
-          Ice bomb powerup ba.Texture.
-
-       tex_sticky_bombs
-          Sticky bomb powerup ba.Texture.
-
-       tex_shield
-          Shield powerup ba.Texture.
-
-       tex_impact_bombs
-          Impact-bomb powerup ba.Texture.
-
-       tex_health
-          Health powerup ba.Texture.
-
-       tex_land_mines
-          Land-mine powerup ba.Texture.
-
-       tex_curse
-          Curse powerup ba.Texture.
-
-       health_powerup_sound
-          ba.Sound played when a health powerup is accepted.
-
-       powerup_sound
-          ba.Sound played when a powerup is accepted.
-
-       powerdown_sound
-          ba.Sound that can be used when powerups wear off.
-
-       powerup_material
-          ba.Material applied to powerup boxes.
-
-       powerup_accept_material
-          Powerups will send a ba.PowerupMessage to anything they touch
-          that has this ba.Material applied.
     """
+
+    model: ba.Model
+    """The ba.Model of the powerup box."""
+
+    model_simple: ba.Model
+    """A simpler ba.Model of the powerup box, for use in shadows, etc."""
+
+    tex_bomb: ba.Texture
+    """Triple-bomb powerup ba.Texture."""
+
+    tex_punch: ba.Texture
+    """Punch powerup ba.Texture."""
+
+    tex_ice_bombs: ba.Texture
+    """Ice bomb powerup ba.Texture."""
+
+    tex_sticky_bombs: ba.Texture
+    """Sticky bomb powerup ba.Texture."""
+
+    tex_shield: ba.Texture
+    """Shield powerup ba.Texture."""
+
+    tex_impact_bombs: ba.Texture
+    """Impact-bomb powerup ba.Texture."""
+
+    tex_health: ba.Texture
+    """Health powerup ba.Texture."""
+
+    tex_land_mines: ba.Texture
+    """Land-mine powerup ba.Texture."""
+
+    tex_curse: ba.Texture
+    """Curse powerup ba.Texture."""
+
+    health_powerup_sound: ba.Sound
+    """ba.Sound played when a health powerup is accepted."""
+
+    powerup_sound: ba.Sound
+    """ba.Sound played when a powerup is accepted."""
+
+    powerdown_sound: ba.Sound
+    """ba.Sound that can be used when powerups wear off."""
+
+    powerup_material: ba.Material
+    """ba.Material applied to powerup boxes."""
+
+    powerup_accept_material: ba.Material
+    """Powerups will send a ba.PowerupMessage to anything they touch
+       that has this ba.Material applied."""
 
     _STORENAME = ba.storagename()
 
     def __init__(self) -> None:
         """Instantiate a PowerupBoxFactory.
 
-        You shouldn't need to do this; call ba.Powerup.get_factory()
+        You shouldn't need to do this; call Powerup.get_factory()
         to get a shared instance.
         """
         from ba.internal import get_default_powerup_distribution
+
         shared = SharedObjects.get()
-        self._lastpoweruptype: Optional[str] = None
+        self._lastpoweruptype: str | None = None
         self.model = ba.getmodel('powerup')
         self.model_simple = ba.getmodel('powerupSimple')
         self.tex_bomb = ba.gettexture('powerupBomb')
@@ -120,7 +119,8 @@ class PowerupBoxFactory:
                 ('modify_part_collision', 'collide', True),
                 ('modify_part_collision', 'physical', False),
                 ('message', 'our_node', 'at_connect', _TouchedMessage()),
-            ))
+            ),
+        )
 
         # We don't wanna be picked up.
         self.powerup_material.add_actions(
@@ -138,9 +138,11 @@ class PowerupBoxFactory:
             for _i in range(int(freq)):
                 self._powerupdist.append(powerup)
 
-    def get_random_powerup_type(self,
-                                forcetype: str = None,
-                                excludetypes: list[str] = None) -> str:
+    def get_random_powerup_type(
+        self,
+        forcetype: str | None = None,
+        excludetypes: list[str] | None = None,
+    ) -> str:
         """Returns a random powerup type (string).
 
         See ba.Powerup.poweruptype for available type values.
@@ -163,9 +165,9 @@ class PowerupBoxFactory:
                 ptype = 'health'
             else:
                 while True:
-                    ptype = self._powerupdist[random.randint(
-                        0,
-                        len(self._powerupdist) - 1)]
+                    ptype = self._powerupdist[
+                        random.randint(0, len(self._powerupdist) - 1)
+                    ]
                     if ptype not in excludetypes:
                         break
         self._lastpoweruptype = ptype
@@ -191,22 +193,22 @@ class PowerupBox(ba.Actor):
 
     This will deliver a ba.PowerupMessage to anything that touches it
     which has the ba.PowerupBoxFactory.powerup_accept_material applied.
-
-    Attributes:
-
-       poweruptype
-          The string powerup type.  This can be 'triple_bombs', 'punch',
-          'ice_bombs', 'impact_bombs', 'land_mines', 'sticky_bombs', 'shield',
-          'health', or 'curse'.
-
-       node
-          The 'prop' ba.Node representing this box.
     """
 
-    def __init__(self,
-                 position: Sequence[float] = (0.0, 1.0, 0.0),
-                 poweruptype: str = 'triple_bombs',
-                 expire: bool = True):
+    poweruptype: str
+    """The string powerup type.  This can be 'triple_bombs', 'punch',
+       'ice_bombs', 'impact_bombs', 'land_mines', 'sticky_bombs', 'shield',
+       'health', or 'curse'."""
+
+    node: ba.Node
+    """The 'prop' ba.Node representing this box."""
+
+    def __init__(
+        self,
+        position: Sequence[float] = (0.0, 1.0, 0.0),
+        poweruptype: str = 'triple_bombs',
+        expire: bool = True,
+    ):
         """Create a powerup-box of the requested type at the given position.
 
         see ba.Powerup.poweruptype for valid type strings.
@@ -254,19 +256,23 @@ class PowerupBox(ba.Actor):
                 'color_texture': tex,
                 'reflection': 'powerup',
                 'reflection_scale': [1.0],
-                'materials': (factory.powerup_material,
-                              shared.object_material)
-            })  # yapf: disable
+                'materials': (factory.powerup_material, shared.object_material),
+            },
+        )  # yapf: disable
 
         # Animate in.
         curve = ba.animate(self.node, 'model_scale', {0: 0, 0.14: 1.6, 0.2: 1})
         ba.timer(0.2, curve.delete)
 
         if expire:
-            ba.timer(DEFAULT_POWERUP_INTERVAL - 2.5,
-                     ba.WeakCall(self._start_flashing))
-            ba.timer(DEFAULT_POWERUP_INTERVAL - 1.0,
-                     ba.WeakCall(self.handlemessage, ba.DieMessage()))
+            ba.timer(
+                DEFAULT_POWERUP_INTERVAL - 2.5,
+                ba.WeakCall(self._start_flashing),
+            )
+            ba.timer(
+                DEFAULT_POWERUP_INTERVAL - 1.0,
+                ba.WeakCall(self.handlemessage, ba.DieMessage()),
+            )
 
     def _start_flashing(self) -> None:
         if self.node:
@@ -279,9 +285,9 @@ class PowerupBox(ba.Actor):
             factory = PowerupBoxFactory.get()
             assert self.node
             if self.poweruptype == 'health':
-                ba.playsound(factory.health_powerup_sound,
-                             3,
-                             position=self.node.position)
+                ba.playsound(
+                    factory.health_powerup_sound, 3, position=self.node.position
+                )
             ba.playsound(factory.powerup_sound, 3, position=self.node.position)
             self._powersgiven = True
             self.handlemessage(ba.DieMessage())
@@ -290,7 +296,8 @@ class PowerupBox(ba.Actor):
             if not self._powersgiven:
                 node = ba.getcollision().opposingnode
                 node.handlemessage(
-                    ba.PowerupMessage(self.poweruptype, sourcenode=self.node))
+                    ba.PowerupMessage(self.poweruptype, sourcenode=self.node)
+                )
 
         elif isinstance(msg, ba.DieMessage):
             if self.node:

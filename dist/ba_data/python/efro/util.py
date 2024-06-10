@@ -4,37 +4,49 @@
 
 from __future__ import annotations
 
-import datetime
+import os
 import time
 import weakref
+import datetime
 import functools
 from enum import Enum
 from typing import TYPE_CHECKING, cast, TypeVar, Generic
 
+_pytz_utc: Any
+
+# We don't *require* pytz, but we want to support it for tzinfos if available.
+try:
+    import pytz
+
+    _pytz_utc = pytz.utc
+except ModuleNotFoundError:
+    _pytz_utc = None  # pylint: disable=invalid-name
+
 if TYPE_CHECKING:
     import asyncio
     from efro.call import Call as Call  # 'as Call' so we re-export.
-    from typing import Any, Callable, Optional
+    from typing import Any, Callable, NoReturn
 
 T = TypeVar('T')
-TVAL = TypeVar('TVAL')
-TARG = TypeVar('TARG')
-TSELF = TypeVar('TSELF')
-TRET = TypeVar('TRET')
-TENUM = TypeVar('TENUM', bound=Enum)
+ValT = TypeVar('ValT')
+ArgT = TypeVar('ArgT')
+SelfT = TypeVar('SelfT')
+RetT = TypeVar('RetT')
+EnumT = TypeVar('EnumT', bound=Enum)
 
 
 class _EmptyObj:
     pass
 
 
+# TODO: kill this and just use efro.call.tpartial
 if TYPE_CHECKING:
     Call = Call
 else:
     Call = functools.partial
 
 
-def enum_by_value(cls: type[TENUM], value: Any) -> TENUM:
+def enum_by_value(cls: type[EnumT], value: Any) -> EnumT:
     """Create an enum from a value.
 
     This is basically the same as doing 'obj = EnumType(value)' except
@@ -58,8 +70,20 @@ def enum_by_value(cls: type[TENUM], value: Any) -> TENUM:
         return out
     except KeyError:
         # pylint: disable=consider-using-f-string
-        raise ValueError('%r is not a valid %s' %
-                         (value, cls.__name__)) from None
+        raise ValueError(
+            '%r is not a valid %s' % (value, cls.__name__)
+        ) from None
+
+
+def check_utc(value: datetime.datetime) -> None:
+    """Ensure a datetime value is timezone-aware utc."""
+    if value.tzinfo is not datetime.timezone.utc and (
+        _pytz_utc is None or value.tzinfo is not _pytz_utc
+    ):
+        raise ValueError(
+            'datetime value does not have timezone set as'
+            ' datetime.timezone.utc'
+        )
 
 
 def utc_now() -> datetime.datetime:
@@ -76,31 +100,34 @@ def utc_now() -> datetime.datetime:
 def utc_today() -> datetime.datetime:
     """Get offset-aware midnight in the utc time zone."""
     now = datetime.datetime.now(datetime.timezone.utc)
-    return datetime.datetime(year=now.year,
-                             month=now.month,
-                             day=now.day,
-                             tzinfo=now.tzinfo)
+    return datetime.datetime(
+        year=now.year, month=now.month, day=now.day, tzinfo=now.tzinfo
+    )
 
 
 def utc_this_hour() -> datetime.datetime:
     """Get offset-aware beginning of the current hour in the utc time zone."""
     now = datetime.datetime.now(datetime.timezone.utc)
-    return datetime.datetime(year=now.year,
-                             month=now.month,
-                             day=now.day,
-                             hour=now.hour,
-                             tzinfo=now.tzinfo)
+    return datetime.datetime(
+        year=now.year,
+        month=now.month,
+        day=now.day,
+        hour=now.hour,
+        tzinfo=now.tzinfo,
+    )
 
 
 def utc_this_minute() -> datetime.datetime:
     """Get offset-aware beginning of current minute in the utc time zone."""
     now = datetime.datetime.now(datetime.timezone.utc)
-    return datetime.datetime(year=now.year,
-                             month=now.month,
-                             day=now.day,
-                             hour=now.hour,
-                             minute=now.minute,
-                             tzinfo=now.tzinfo)
+    return datetime.datetime(
+        year=now.year,
+        month=now.month,
+        day=now.day,
+        hour=now.hour,
+        minute=now.minute,
+        tzinfo=now.tzinfo,
+    )
 
 
 def empty_weakref(objtype: type[T]) -> weakref.ref[T]:
@@ -154,26 +181,31 @@ class DirtyBit:
     when updates fail)
     """
 
-    def __init__(self,
-                 dirty: bool = False,
-                 retry_interval: float = 5.0,
-                 use_lock: bool = False,
-                 auto_dirty_seconds: float = None,
-                 min_update_interval: Optional[float] = None):
+    def __init__(
+        self,
+        dirty: bool = False,
+        retry_interval: float = 5.0,
+        use_lock: bool = False,
+        auto_dirty_seconds: float | None = None,
+        min_update_interval: float | None = None,
+    ):
         curtime = time.time()
         self._retry_interval = retry_interval
         self._auto_dirty_seconds = auto_dirty_seconds
         self._min_update_interval = min_update_interval
         self._dirty = dirty
-        self._next_update_time: Optional[float] = (curtime if dirty else None)
-        self._last_update_time: Optional[float] = None
-        self._next_auto_dirty_time: Optional[float] = (
-            (curtime + self._auto_dirty_seconds) if
-            (not dirty and self._auto_dirty_seconds is not None) else None)
+        self._next_update_time: float | None = curtime if dirty else None
+        self._last_update_time: float | None = None
+        self._next_auto_dirty_time: float | None = (
+            (curtime + self._auto_dirty_seconds)
+            if (not dirty and self._auto_dirty_seconds is not None)
+            else None
+        )
         self._use_lock = use_lock
         self.lock: asyncio.Lock
         if self._use_lock:
             import asyncio
+
             self.lock = asyncio.Lock()
 
     @property
@@ -198,11 +230,14 @@ class DirtyBit:
 
             # If they want to enforce a minimum update interval,
             # push out the next update time if it hasn't been long enough.
-            if (self._min_update_interval is not None
-                    and self._last_update_time is not None):
+            if (
+                self._min_update_interval is not None
+                and self._last_update_time is not None
+            ):
                 self._next_update_time = max(
                     self._next_update_time,
-                    self._last_update_time + self._min_update_interval)
+                    self._last_update_time + self._min_update_interval,
+                )
 
         self._dirty = value
 
@@ -217,8 +252,10 @@ class DirtyBit:
         curtime = time.time()
 
         # Auto-dirty ourself if we're into that.
-        if (self._next_auto_dirty_time is not None
-                and curtime > self._next_auto_dirty_time):
+        if (
+            self._next_auto_dirty_time is not None
+            and curtime > self._next_auto_dirty_time
+        ):
             self.dirty = True
             self._next_auto_dirty_time = None
         if not self._dirty:
@@ -233,23 +270,26 @@ class DirtyBit:
         return False
 
 
-class DispatchMethodWrapper(Generic[TARG, TRET]):
+class DispatchMethodWrapper(Generic[ArgT, RetT]):
     """Type-aware standin for the dispatch func returned by dispatchmethod."""
 
-    def __call__(self, arg: TARG) -> TRET:
-        pass
+    def __call__(self, arg: ArgT) -> RetT:
+        raise RuntimeError('Should not get here')
 
     @staticmethod
-    def register(func: Callable[[Any, Any], TRET]) -> Callable:
+    def register(
+        func: Callable[[Any, Any], RetT]
+    ) -> Callable[[Any, Any], RetT]:
         """Register a new dispatch handler for this dispatch-method."""
+        raise RuntimeError('Should not get here')
 
     registry: dict[Any, Callable]
 
 
 # noinspection PyProtectedMember,PyTypeHints
 def dispatchmethod(
-        func: Callable[[Any, TARG],
-                       TRET]) -> DispatchMethodWrapper[TARG, TRET]:
+    func: Callable[[Any, ArgT], RetT]
+) -> DispatchMethodWrapper[ArgT, RetT]:
     """A variation of functools.singledispatch for methods.
 
     Note: as of Python 3.9 there is now functools.singledispatchmethod,
@@ -257,6 +297,7 @@ def dispatchmethod(
     which gives us a reason to keep this one around for now.
     """
     from functools import singledispatch, update_wrapper
+
     origwrapper: Any = singledispatch(func)
 
     # Pull this out so hopefully origwrapper can die,
@@ -272,8 +313,9 @@ def dispatchmethod(
     # NOTE: sounds like we can use functools singledispatchmethod in 3.8
     def wrapper(*args: Any, **kw: Any) -> Any:
         if not args or len(args) < 2:
-            raise TypeError(f'{funcname} requires at least '
-                            '2 positional arguments')
+            raise TypeError(
+                f'{funcname} requires at least ' '2 positional arguments'
+            )
 
         return dispatch(args[1].__class__)(*args, **kw)
 
@@ -288,7 +330,7 @@ def dispatchmethod(
     return cast(DispatchMethodWrapper, wrapper)
 
 
-def valuedispatch(call: Callable[[TVAL], TRET]) -> ValueDispatcher[TVAL, TRET]:
+def valuedispatch(call: Callable[[ValT], RetT]) -> ValueDispatcher[ValT, RetT]:
     """Decorator for functions to allow dispatching based on a value.
 
     This differs from functools.singledispatch in that it dispatches based
@@ -299,79 +341,91 @@ def valuedispatch(call: Callable[[TVAL], TRET]) -> ValueDispatcher[TVAL, TRET]:
     return ValueDispatcher(call)
 
 
-class ValueDispatcher(Generic[TVAL, TRET]):
+class ValueDispatcher(Generic[ValT, RetT]):
     """Used by the valuedispatch decorator"""
 
-    def __init__(self, call: Callable[[TVAL], TRET]) -> None:
+    def __init__(self, call: Callable[[ValT], RetT]) -> None:
         self._base_call = call
-        self._handlers: dict[TVAL, Callable[[], TRET]] = {}
+        self._handlers: dict[ValT, Callable[[], RetT]] = {}
 
-    def __call__(self, value: TVAL) -> TRET:
+    def __call__(self, value: ValT) -> RetT:
         handler = self._handlers.get(value)
         if handler is not None:
             return handler()
         return self._base_call(value)
 
-    def _add_handler(self, value: TVAL, call: Callable[[], TRET]) -> None:
+    def _add_handler(
+        self, value: ValT, call: Callable[[], RetT]
+    ) -> Callable[[], RetT]:
         if value in self._handlers:
             raise RuntimeError(f'Duplicate handlers added for {value}')
         self._handlers[value] = call
+        return call
 
-    def register(self, value: TVAL) -> Callable[[Callable[[], TRET]], None]:
+    def register(
+        self, value: ValT
+    ) -> Callable[[Callable[[], RetT]], Callable[[], RetT]]:
         """Add a handler to the dispatcher."""
         from functools import partial
+
         return partial(self._add_handler, value)
 
 
 def valuedispatch1arg(
-    call: Callable[[TVAL, TARG],
-                   TRET]) -> ValueDispatcher1Arg[TVAL, TARG, TRET]:
+    call: Callable[[ValT, ArgT], RetT]
+) -> ValueDispatcher1Arg[ValT, ArgT, RetT]:
     """Like valuedispatch but for functions taking an extra argument."""
     return ValueDispatcher1Arg(call)
 
 
-class ValueDispatcher1Arg(Generic[TVAL, TARG, TRET]):
+class ValueDispatcher1Arg(Generic[ValT, ArgT, RetT]):
     """Used by the valuedispatch1arg decorator"""
 
-    def __init__(self, call: Callable[[TVAL, TARG], TRET]) -> None:
+    def __init__(self, call: Callable[[ValT, ArgT], RetT]) -> None:
         self._base_call = call
-        self._handlers: dict[TVAL, Callable[[TARG], TRET]] = {}
+        self._handlers: dict[ValT, Callable[[ArgT], RetT]] = {}
 
-    def __call__(self, value: TVAL, arg: TARG) -> TRET:
+    def __call__(self, value: ValT, arg: ArgT) -> RetT:
         handler = self._handlers.get(value)
         if handler is not None:
             return handler(arg)
         return self._base_call(value, arg)
 
-    def _add_handler(self, value: TVAL, call: Callable[[TARG], TRET]) -> None:
+    def _add_handler(
+        self, value: ValT, call: Callable[[ArgT], RetT]
+    ) -> Callable[[ArgT], RetT]:
         if value in self._handlers:
             raise RuntimeError(f'Duplicate handlers added for {value}')
         self._handlers[value] = call
+        return call
 
-    def register(self,
-                 value: TVAL) -> Callable[[Callable[[TARG], TRET]], None]:
+    def register(
+        self, value: ValT
+    ) -> Callable[[Callable[[ArgT], RetT]], Callable[[ArgT], RetT]]:
         """Add a handler to the dispatcher."""
         from functools import partial
+
         return partial(self._add_handler, value)
 
 
 if TYPE_CHECKING:
 
-    class ValueDispatcherMethod(Generic[TVAL, TRET]):
+    class ValueDispatcherMethod(Generic[ValT, RetT]):
         """Used by the valuedispatchmethod decorator."""
 
-        def __call__(self, value: TVAL) -> TRET:
+        def __call__(self, value: ValT) -> RetT:
             ...
 
-        def register(self,
-                     value: TVAL) -> Callable[[Callable[[TSELF], TRET]], None]:
+        def register(
+            self, value: ValT
+        ) -> Callable[[Callable[[SelfT], RetT]], Callable[[SelfT], RetT]]:
             """Add a handler to the dispatcher."""
             ...
 
 
 def valuedispatchmethod(
-        call: Callable[[TSELF, TVAL],
-                       TRET]) -> ValueDispatcherMethod[TVAL, TRET]:
+    call: Callable[[SelfT, ValT], RetT]
+) -> ValueDispatcherMethod[ValT, RetT]:
     """Like valuedispatch but works with methods instead of functions."""
 
     # NOTE: It seems that to wrap a method with a decorator and have self
@@ -380,18 +434,19 @@ def valuedispatchmethod(
     # in the function call dict and simply return a call.
 
     _base_call = call
-    _handlers: dict[TVAL, Callable[[TSELF], TRET]] = {}
+    _handlers: dict[ValT, Callable[[SelfT], RetT]] = {}
 
-    def _add_handler(value: TVAL, addcall: Callable[[TSELF], TRET]) -> None:
+    def _add_handler(value: ValT, addcall: Callable[[SelfT], RetT]) -> None:
         if value in _handlers:
             raise RuntimeError(f'Duplicate handlers added for {value}')
         _handlers[value] = addcall
 
-    def _register(value: TVAL) -> Callable[[Callable[[TSELF], TRET]], None]:
+    def _register(value: ValT) -> Callable[[Callable[[SelfT], RetT]], None]:
         from functools import partial
+
         return partial(_add_handler, value)
 
-    def _call_wrapper(self: TSELF, value: TVAL) -> TRET:
+    def _call_wrapper(self: SelfT, value: ValT) -> RetT:
         handler = _handlers.get(value)
         if handler is not None:
             return handler(self)
@@ -406,7 +461,7 @@ def valuedispatchmethod(
     # In reality we just return a raw function call (for reasons listed above).
     # pylint: disable=undefined-variable, no-else-return
     if TYPE_CHECKING:
-        return ValueDispatcherMethod[TVAL, TRET]()
+        return ValueDispatcherMethod[ValT, RetT]()
     else:
         return _call_wrapper
 
@@ -449,7 +504,7 @@ def asserttype(obj: Any, typ: type[T]) -> T:
     return obj
 
 
-def asserttype_o(obj: Any, typ: type[T]) -> Optional[T]:
+def asserttype_o(obj: Any, typ: type[T]) -> T | None:
     """Return an object typed as a given optional type.
 
     Assert is used to check its actual type, so only use this when
@@ -472,7 +527,7 @@ def checktype(obj: Any, typ: type[T]) -> T:
     return obj
 
 
-def checktype_o(obj: Any, typ: type[T]) -> Optional[T]:
+def checktype_o(obj: Any, typ: type[T]) -> T | None:
     """Return an object typed as a given optional type.
 
     Always checks the type at runtime with isinstance and throws a TypeError
@@ -493,11 +548,12 @@ def warntype(obj: Any, typ: type[T]) -> T:
     assert isinstance(typ, type), 'only actual types accepted'
     if not isinstance(obj, typ):
         import logging
+
         logging.warning('warntype: expected a %s, got a %s', typ, type(obj))
     return obj  # type: ignore
 
 
-def warntype_o(obj: Any, typ: type[T]) -> Optional[T]:
+def warntype_o(obj: Any, typ: type[T]) -> T | None:
     """Return an object typed as a given type.
 
     Always checks the type at runtime and simply logs a warning if it is
@@ -506,12 +562,14 @@ def warntype_o(obj: Any, typ: type[T]) -> Optional[T]:
     assert isinstance(typ, type), 'only actual types accepted'
     if not isinstance(obj, (typ, type(None))):
         import logging
-        logging.warning('warntype: expected a %s or None, got a %s', typ,
-                        type(obj))
+
+        logging.warning(
+            'warntype: expected a %s or None, got a %s', typ, type(obj)
+        )
     return obj  # type: ignore
 
 
-def assert_non_optional(obj: Optional[T]) -> T:
+def assert_non_optional(obj: T | None) -> T:
     """Return an object with Optional typing removed.
 
     Assert is used to check its actual type, so only use this when
@@ -521,7 +579,7 @@ def assert_non_optional(obj: Optional[T]) -> T:
     return obj
 
 
-def check_non_optional(obj: Optional[T]) -> T:
+def check_non_optional(obj: T | None) -> T:
     """Return an object with Optional typing removed.
 
     Always checks the actual type and throws a TypeError on failure.
@@ -579,6 +637,8 @@ def human_readable_compact_id(num: int) -> str:
      'o' is excluded due to similarity to '0'.
      'z' is excluded due to similarity to '2'.
 
+    Therefore for n chars this can store values of 21^n.
+
     When reading human input consisting of these IDs, it may be desirable
     to map the disallowed chars to their corresponding allowed ones
     ('o' -> '0', etc).
@@ -599,8 +659,77 @@ def compact_id(num: int) -> str:
     friendly to humans due to using both capital and lowercase letters,
     both 'O' and '0', etc.
 
+    Therefore for n chars this can store values of 62^n.
+
     Sort order for these ids is the same as the original numbers.
     """
     return _compact_id(
-        num, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        'abcdefghijklmnopqrstuvwxyz')
+        num, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+    )
+
+
+# NOTE: Even though this is available as part of typing_extensions, keeping
+# it in here for now so we don't require typing_extensions as a dependency.
+# Once 3.11 rolls around we can kill this and use typing.assert_never.
+def assert_never(value: NoReturn) -> NoReturn:
+    """Trick for checking exhaustive handling of Enums, etc.
+    See https://github.com/python/typing/issues/735
+    """
+    assert False, f'Unhandled value: {value} ({type(value).__name__})'
+
+
+def unchanging_hostname() -> str:
+    """Return an unchanging name for the local device.
+
+    Similar to the `hostname` call (or os.uname().nodename in Python)
+    except attempts to give a name that doesn't change depending on
+    network conditions. (A Mac will tend to go from Foo to Foo.local,
+    Foo.lan etc. throughout its various adventures)
+    """
+    import platform
+    import subprocess
+
+    # On Mac, this should give the computer name assigned in System Prefs.
+    if platform.system() == 'Darwin':
+        return (
+            subprocess.run(
+                ['scutil', '--get', 'ComputerName'],
+                check=True,
+                capture_output=True,
+            )
+            .stdout.decode()
+            .strip()
+            .replace(' ', '-')
+        )
+    return os.uname().nodename
+
+
+def set_canonical_module(
+    module_globals: dict[str, Any], names: list[str]
+) -> None:
+    """Override any __module__ attrs on passed classes/etc.
+
+    This allows classes to present themselves using clean paths such as
+    mymodule.MyClass instead of possibly ugly internal ones such as
+    mymodule._internal._stuff.MyClass.
+    """
+    modulename = module_globals.get('__name__')
+    if not isinstance(modulename, str):
+        raise RuntimeError('Unable to get module name.')
+    for name in names:
+        obj = module_globals[name]
+        existing = getattr(obj, '__module__', None)
+        try:
+            if existing is not None and existing != modulename:
+                obj.__module__ = modulename
+        except Exception:
+            import logging
+
+            logging.warning(
+                'set_canonical_module: unable to change __module__'
+                " from '%s' to '%s' on %s object at '%s'.",
+                existing,
+                modulename,
+                type(obj),
+                name,
+            )

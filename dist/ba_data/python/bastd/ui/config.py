@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import ba
 
 if TYPE_CHECKING:
-    from typing import Any, Union, Callable
+    from typing import Any, Callable
 
 
 class ConfigCheckBox:
@@ -17,23 +17,23 @@ class ConfigCheckBox:
 
     It will automatically save and apply the config when its
     value changes.
-
-    Attributes:
-
-        widget
-            The underlying ba.Widget instance.
     """
 
-    def __init__(self,
-                 parent: ba.Widget,
-                 configkey: str,
-                 position: tuple[float, float],
-                 size: tuple[float, float],
-                 displayname: Union[str, ba.Lstr] = None,
-                 scale: float = None,
-                 maxwidth: float = None,
-                 autoselect: bool = True,
-                 value_change_call: Callable[[Any], Any] = None):
+    widget: ba.Widget
+    """The underlying ba.Widget instance."""
+
+    def __init__(
+        self,
+        parent: ba.Widget,
+        configkey: str,
+        position: tuple[float, float],
+        size: tuple[float, float],
+        displayname: str | ba.Lstr | None = None,
+        scale: float | None = None,
+        maxwidth: float | None = None,
+        autoselect: bool = True,
+        value_change_call: Callable[[Any], Any] | None = None,
+    ):
         if displayname is None:
             displayname = configkey
         self._value_change_call = value_change_call
@@ -48,7 +48,8 @@ class ConfigCheckBox:
             value=ba.app.config.resolve(configkey),
             on_value_change_call=self._value_changed,
             scale=scale,
-            maxwidth=maxwidth)
+            maxwidth=maxwidth,
+        )
         # complain if we outlive our checkbox
         ba.uicleanupcheck(self, self.widget)
 
@@ -65,34 +66,34 @@ class ConfigNumberEdit:
 
     It will automatically save and apply the config when its
     value changes.
-
-    Attributes:
-
-        nametext
-            The text widget displaying the name.
-
-        valuetext
-            The text widget displaying the current value.
-
-        minusbutton
-            The button widget used to reduce the value.
-
-        plusbutton
-            The button widget used to increase the value.
     """
 
-    def __init__(self,
-                 parent: ba.Widget,
-                 configkey: str,
-                 position: tuple[float, float],
-                 minval: float = 0.0,
-                 maxval: float = 100.0,
-                 increment: float = 1.0,
-                 callback: Callable[[float], Any] = None,
-                 xoffset: float = 0.0,
-                 displayname: Union[str, ba.Lstr] = None,
-                 changesound: bool = True,
-                 textscale: float = 1.0):
+    nametext: ba.Widget
+    """The text widget displaying the name."""
+
+    valuetext: ba.Widget
+    """The text widget displaying the current value."""
+
+    minusbutton: ba.Widget
+    """The button widget used to reduce the value."""
+
+    plusbutton: ba.Widget
+    """The button widget used to increase the value."""
+
+    def __init__(
+        self,
+        parent: ba.Widget,
+        configkey: str,
+        position: tuple[float, float],
+        minval: float = 0.0,
+        maxval: float = 100.0,
+        increment: float = 1.0,
+        callback: Callable[[float], Any] | None = None,
+        xoffset: float = 0.0,
+        displayname: str | ba.Lstr | None = None,
+        changesound: bool = True,
+        textscale: float = 1.0,
+    ):
         if displayname is None:
             displayname = configkey
 
@@ -103,24 +104,28 @@ class ConfigNumberEdit:
         self._callback = callback
         self._value = ba.app.config.resolve(configkey)
 
-        self.nametext = ba.textwidget(parent=parent,
-                                      position=position,
-                                      size=(100, 30),
-                                      text=displayname,
-                                      maxwidth=160 + xoffset,
-                                      color=(0.8, 0.8, 0.8, 1.0),
-                                      h_align='left',
-                                      v_align='center',
-                                      scale=textscale)
-        self.valuetext = ba.textwidget(parent=parent,
-                                       position=(246 + xoffset, position[1]),
-                                       size=(60, 28),
-                                       editable=False,
-                                       color=(0.3, 1.0, 0.3, 1.0),
-                                       h_align='right',
-                                       v_align='center',
-                                       text=str(self._value),
-                                       padding=2)
+        self.nametext = ba.textwidget(
+            parent=parent,
+            position=position,
+            size=(100, 30),
+            text=displayname,
+            maxwidth=160 + xoffset,
+            color=(0.8, 0.8, 0.8, 1.0),
+            h_align='left',
+            v_align='center',
+            scale=textscale,
+        )
+        self.valuetext = ba.textwidget(
+            parent=parent,
+            position=(246 + xoffset, position[1]),
+            size=(60, 28),
+            editable=False,
+            color=(0.3, 1.0, 0.3, 1.0),
+            h_align='right',
+            v_align='center',
+            text=str(self._value),
+            padding=2,
+        )
         self.minusbutton = ba.buttonwidget(
             parent=parent,
             position=(330 + xoffset, position[1]),
@@ -129,16 +134,18 @@ class ConfigNumberEdit:
             autoselect=True,
             on_activate_call=ba.Call(self._down),
             repeat=True,
-            enable_sound=changesound)
-        self.plusbutton = ba.buttonwidget(parent=parent,
-                                          position=(380 + xoffset,
-                                                    position[1]),
-                                          size=(28, 28),
-                                          label='+',
-                                          autoselect=True,
-                                          on_activate_call=ba.Call(self._up),
-                                          repeat=True,
-                                          enable_sound=changesound)
+            enable_sound=changesound,
+        )
+        self.plusbutton = ba.buttonwidget(
+            parent=parent,
+            position=(380 + xoffset, position[1]),
+            size=(28, 28),
+            label='+',
+            autoselect=True,
+            on_activate_call=ba.Call(self._up),
+            repeat=True,
+            enable_sound=changesound,
+        )
         # Complain if we outlive our widgets.
         ba.uicleanupcheck(self, self.nametext)
         self._update_display()

@@ -2,7 +2,7 @@
 #
 """Provides the Conquest game."""
 
-# ba_meta require api 6
+# ba_meta require api 7
 # (see https://ballistica.net/wiki/meta-tag-system)
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from bastd.actor.playerspaz import PlayerSpaz
 from bastd.gameutils import SharedObjects
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Sequence, Union
+    from typing import Any, Sequence
     from bastd.actor.respawnicon import RespawnIcon
 
 
@@ -26,11 +26,11 @@ class ConquestFlag(Flag):
 
     def __init__(self, *args: Any, **keywds: Any):
         super().__init__(*args, **keywds)
-        self._team: Optional[Team] = None
-        self.light: Optional[ba.Node] = None
+        self._team: Team | None = None
+        self.light: ba.Node | None = None
 
     @property
-    def team(self) -> Optional[Team]:
+    def team(self) -> Team | None:
         """The team that owns this flag."""
         return self._team
 
@@ -46,21 +46,21 @@ class Player(ba.Player['Team']):
     # FIXME: We shouldn't be using customdata here
     # (but need to update respawn funcs accordingly first).
     @property
-    def respawn_timer(self) -> Optional[ba.Timer]:
+    def respawn_timer(self) -> ba.Timer | None:
         """Type safe access to standard respawn timer."""
         return self.customdata.get('respawn_timer', None)
 
     @respawn_timer.setter
-    def respawn_timer(self, value: Optional[ba.Timer]) -> None:
+    def respawn_timer(self, value: ba.Timer | None) -> None:
         self.customdata['respawn_timer'] = value
 
     @property
-    def respawn_icon(self) -> Optional[RespawnIcon]:
+    def respawn_icon(self) -> RespawnIcon | None:
         """Type safe access to standard respawn icon."""
         return self.customdata.get('respawn_icon', None)
 
     @respawn_icon.setter
-    def respawn_icon(self, value: Optional[RespawnIcon]) -> None:
+    def respawn_icon(self, value: RespawnIcon | None) -> None:
         self.customdata['respawn_icon'] = value
 
 
@@ -125,8 +125,9 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
 
         # Base class overrides.
         self.slow_motion = self._epic_mode
-        self.default_music = (ba.MusicType.EPIC
-                              if self._epic_mode else ba.MusicType.GRAND_ROMP)
+        self.default_music = (
+            ba.MusicType.EPIC if self._epic_mode else ba.MusicType.GRAND_ROMP
+        )
 
         # We want flags to tell us they've been hit but not react physically.
         self._extraflagmat.add_actions(
@@ -134,12 +135,13 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
             actions=(
                 ('modify_part_collision', 'collide', True),
                 ('call', 'at_connect', self._handle_flag_player_collide),
-            ))
+            ),
+        )
 
-    def get_instance_description(self) -> Union[str, Sequence]:
+    def get_instance_description(self) -> str | Sequence:
         return 'Secure all ${ARG1} flags.', len(self.map.flag_points)
 
-    def get_instance_description_short(self) -> Union[str, Sequence]:
+    def get_instance_description_short(self) -> str | Sequence:
         return 'secure all ${ARG1} flags', len(self.map.flag_points)
 
     def on_team_join(self, team: Team) -> None:
@@ -161,20 +163,22 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
         # Set up flags with marker lights.
         for i, flag_point in enumerate(self.map.flag_points):
             point = flag_point
-            flag = ConquestFlag(position=point,
-                                touchable=False,
-                                materials=[self._extraflagmat])
+            flag = ConquestFlag(
+                position=point, touchable=False, materials=[self._extraflagmat]
+            )
             self._flags.append(flag)
             Flag.project_stand(point)
-            flag.light = ba.newnode('light',
-                                    owner=flag.node,
-                                    attrs={
-                                        'position': point,
-                                        'intensity': 0.25,
-                                        'height_attenuated': False,
-                                        'radius': 0.3,
-                                        'color': (1, 1, 1)
-                                    })
+            flag.light = ba.newnode(
+                'light',
+                owner=flag.node,
+                attrs={
+                    'position': point,
+                    'intensity': 0.25,
+                    'height_attenuated': False,
+                    'radius': 0.3,
+                    'color': (1, 1, 1),
+                },
+            )
 
         # Give teams a flag to start with.
         for i, team in enumerate(self.teams):
@@ -209,8 +213,9 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
                     player.respawn_icon = None
             if team.flags_held == len(self._flags):
                 self.end_game()
-            self._scoreboard.set_team_value(team, team.flags_held,
-                                            len(self._flags))
+            self._scoreboard.set_team_value(
+                team, team.flags_held, len(self._flags)
+            )
 
     def end_game(self) -> None:
         results = ba.GameResults()
@@ -221,12 +226,14 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
     def _flash_flag(self, flag: ConquestFlag, length: float = 1.0) -> None:
         assert flag.node
         assert flag.light
-        light = ba.newnode('light',
-                           attrs={
-                               'position': flag.node.position,
-                               'height_attenuated': False,
-                               'color': flag.light.color
-                           })
+        light = ba.newnode(
+            'light',
+            attrs={
+                'position': flag.node.position,
+                'height_attenuated': False,
+                'color': flag.light.color,
+            },
+        )
         ba.animate(light, 'intensity', {0: 0, 0.25: 1, 0.5: 0}, loop=True)
         ba.timer(length, light.delete)
 
@@ -234,9 +241,9 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
         collision = ba.getcollision()
         try:
             flag = collision.sourcenode.getdelegate(ConquestFlag, True)
-            player = collision.opposingnode.getdelegate(PlayerSpaz,
-                                                        True).getplayer(
-                                                            Player, True)
+            player = collision.opposingnode.getdelegate(
+                PlayerSpaz, True
+            ).getplayer(Player, True)
         except ba.NotFoundError:
             return
         assert flag.light
@@ -253,10 +260,12 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
             # Respawn any players on this team that were in limbo due to the
             # lack of a flag for their team.
             for otherplayer in self.players:
-                if (otherplayer.team is flag.team
-                        and otherplayer.actor is not None
-                        and not otherplayer.is_alive()
-                        and otherplayer.respawn_timer is None):
+                if (
+                    otherplayer.team is flag.team
+                    and otherplayer.actor is not None
+                    and not otherplayer.is_alive()
+                    and otherplayer.respawn_timer is None
+                ):
                     self.spawn_player(otherplayer)
 
     def handlemessage(self, msg: Any) -> Any:
@@ -276,8 +285,9 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
 
     def spawn_player(self, player: Player) -> ba.Actor:
         # We spawn players at different places based on what flags are held.
-        return self.spawn_player_spaz(player,
-                                      self._get_player_spawn_position(player))
+        return self.spawn_player_spaz(
+            player, self._get_player_spawn_position(player)
+        )
 
     def _get_player_spawn_position(self, player: Player) -> Sequence[float]:
 
@@ -298,8 +308,9 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
             spt = self.map.spawn_by_flag_points[spawn]
             our_pt = ba.Vec3(spt[0], spt[1], spt[2])
             for otherspawn in [
-                    i for i in range(spawn_count)
-                    if self._flags[i].team is not player.team
+                i
+                for i in range(spawn_count)
+                if self._flags[i].team is not player.team
             ]:
                 spt = self.map.spawn_by_flag_points[otherspawn]
                 their_pt = ba.Vec3(spt[0], spt[1], spt[2])
@@ -311,6 +322,9 @@ class ConquestGame(ba.TeamGameActivity[Player, Team]):
         pos = self.map.spawn_by_flag_points[closest_spawn]
         x_range = (-0.5, 0.5) if pos[3] == 0.0 else (-pos[3], pos[3])
         z_range = (-0.5, 0.5) if pos[5] == 0.0 else (-pos[5], pos[5])
-        pos = (pos[0] + random.uniform(*x_range), pos[1],
-               pos[2] + random.uniform(*z_range))
+        pos = (
+            pos[0] + random.uniform(*x_range),
+            pos[1],
+            pos[2] + random.uniform(*z_range),
+        )
         return pos

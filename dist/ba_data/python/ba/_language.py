@@ -11,20 +11,20 @@ import _ba
 
 if TYPE_CHECKING:
     import ba
-    from typing import Any, Optional, Union, Sequence
+    from typing import Any, Sequence
 
 
 class LanguageSubsystem:
     """Wraps up language related app functionality.
 
-    Category: App Classes
+    Category: **App Classes**
 
     To use this class, access the single instance of it at 'ba.app.lang'.
     """
 
     def __init__(self) -> None:
-        self.language_target: Optional[AttrDict] = None
-        self.language_merged: Optional[AttrDict] = None
+        self.language_target: AttrDict | None = None
+        self.language_merged: AttrDict | None = None
         self.default_language = self._get_default_language()
 
     def _can_display_language(self, language: str) -> bool:
@@ -35,10 +35,21 @@ class LanguageSubsystem:
         """
 
         # We don't yet support full unicode display on windows or linux :-(.
-        if (language in {
-                'Chinese', 'ChineseTraditional', 'Persian', 'Korean', 'Arabic',
-                'Hindi', 'Vietnamese', 'Thai', 'Tamil'
-        } and not _ba.can_display_full_unicode()):
+        if (
+            language
+            in {
+                'Chinese',
+                'ChineseTraditional',
+                'Persian',
+                'Korean',
+                'Arabic',
+                'Hindi',
+                'Vietnamese',
+                'Thai',
+                'Tamil',
+            }
+            and not _ba.can_display_full_unicode()
+        ):
             return False
         return True
 
@@ -56,37 +67,39 @@ class LanguageSubsystem:
 
     def _get_default_language(self) -> str:
         languages = {
+            'ar': 'Arabic',
+            'be': 'Belarussian',
+            'zh': 'Chinese',
+            'hr': 'Croatian',
+            'cs': 'Czech',
+            'da': 'Danish',
+            'nl': 'Dutch',
+            'eo': 'Esperanto',
+            'fil': 'Filipino',
+            'fr': 'French',
             'de': 'German',
+            'el': 'Greek',
+            'hi': 'Hindi',
+            'hu': 'Hungarian',
+            'id': 'Indonesian',
+            'it': 'Italian',
+            'ko': 'Korean',
+            'ms': 'Malay',
+            'fa': 'Persian',
+            'pl': 'Polish',
+            'pt': 'Portuguese',
+            'ro': 'Romanian',
+            'ru': 'Russian',
+            'sr': 'Serbian',
             'es': 'Spanish',
             'sk': 'Slovak',
-            'it': 'Italian',
-            'nl': 'Dutch',
-            'da': 'Danish',
-            'pt': 'Portuguese',
-            'fr': 'French',
-            'el': 'Greek',
-            'ru': 'Russian',
-            'pl': 'Polish',
             'sv': 'Swedish',
-            'eo': 'Esperanto',
-            'cs': 'Czech',
-            'hr': 'Croatian',
-            'hu': 'Hungarian',
-            'be': 'Belarussian',
-            'ro': 'Romanian',
-            'ko': 'Korean',
-            'fa': 'Persian',
-            'ar': 'Arabic',
-            'zh': 'Chinese',
-            'tr': 'Turkish',
-            'th': 'Thai',
-            'id': 'Indonesian',
-            'sr': 'Serbian',
-            'uk': 'Ukrainian',
-            'vi': 'Vietnamese',
-            'vec': 'Venetian',
-            'hi': 'Hindi',
             'ta': 'Tamil',
+            'th': 'Thai',
+            'tr': 'Turkish',
+            'uk': 'Ukrainian',
+            'vec': 'Venetian',
+            'vi': 'Vietnamese',
         }
 
         # Special case for Chinese: map specific variations to traditional.
@@ -129,18 +142,22 @@ class LanguageSubsystem:
                     names[i] = 'ChineseTraditional'
         except Exception:
             from ba import _error
+
             _error.print_exception()
             names = []
         for name in names:
             if self._can_display_language(name):
                 langs.add(name)
-        return sorted(name for name in names
-                      if self._can_display_language(name))
+        return sorted(
+            name for name in names if self._can_display_language(name)
+        )
 
-    def setlanguage(self,
-                    language: Optional[str],
-                    print_change: bool = True,
-                    store_to_config: bool = True) -> None:
+    def setlanguage(
+        self,
+        language: str | None,
+        print_change: bool = True,
+        store_to_config: bool = True,
+    ) -> None:
         """Set the active language used for the game.
 
         Pass None to use OS default language.
@@ -163,8 +180,9 @@ class LanguageSubsystem:
         else:
             switched = False
 
-        with open('ba_data/data/languages/english.json',
-                  encoding='utf-8') as infile:
+        with open(
+            'ba_data/data/languages/english.json', encoding='utf-8'
+        ) as infile:
             lenglishvalues = json.loads(infile.read())
 
         # None implies default.
@@ -174,16 +192,21 @@ class LanguageSubsystem:
             if language == 'English':
                 lmodvalues = None
             else:
-                lmodfile = 'ba_data/data/languages/' + language.lower(
-                ) + '.json'
+                lmodfile = (
+                    'ba_data/data/languages/' + language.lower() + '.json'
+                )
                 with open(lmodfile, encoding='utf-8') as infile:
                     lmodvalues = json.loads(infile.read())
         except Exception:
             from ba import _error
+
             _error.print_exception('Exception importing language:', language)
-            _ba.screenmessage("Error setting language to '" + language +
-                              "'; see log for details",
-                              color=(1, 0, 0))
+            _ba.screenmessage(
+                "Error setting language to '"
+                + language
+                + "'; see log for details",
+                color=(1, 0, 0),
+            )
             switched = False
             lmodvalues = None
 
@@ -192,8 +215,8 @@ class LanguageSubsystem:
         langtarget = self.language_target
         assert langtarget is not None
         _add_to_attr_dict(
-            langtarget,
-            lmodvalues if lmodvalues is not None else lenglishvalues)
+            langtarget, lmodvalues if lmodvalues is not None else lenglishvalues
+        )
 
         # Create an attrdict of our target language overlaid
         # on our base (english).
@@ -208,20 +231,22 @@ class LanguageSubsystem:
         # Pass some keys/values in for low level code to use;
         # start with everything in their 'internal' section.
         internal_vals = [
-            v for v in list(lfull['internal'].items())
-            if isinstance(v[1], str)
+            v for v in list(lfull['internal'].items()) if isinstance(v[1], str)
         ]
 
         # Cherry-pick various other values to include.
         # (should probably get rid of the 'internal' section
         # and do everything this way)
         for value in [
-                'replayNameDefaultText', 'replayWriteErrorText',
-                'replayVersionErrorText', 'replayReadErrorText'
+            'replayNameDefaultText',
+            'replayWriteErrorText',
+            'replayVersionErrorText',
+            'replayReadErrorText',
         ]:
             internal_vals.append((value, lfull[value]))
         internal_vals.append(
-            ('axisText', lfull['configGamepadWindow']['axisText']))
+            ('axisText', lfull['configGamepadWindow']['axisText'])
+        )
         internal_vals.append(('buttonText', lfull['buttonText']))
         lmerged = self.language_merged
         assert lmerged is not None
@@ -231,16 +256,22 @@ class LanguageSubsystem:
         random_names = [n for n in random_names if n != '']
         _ba.set_internal_language_keys(internal_vals, random_names)
         if switched and print_change:
-            _ba.screenmessage(Lstr(resource='languageSetText',
-                                   subs=[('${LANGUAGE}',
-                                          Lstr(translate=('languages',
-                                                          language)))]),
-                              color=(0, 1, 0))
+            _ba.screenmessage(
+                Lstr(
+                    resource='languageSetText',
+                    subs=[
+                        ('${LANGUAGE}', Lstr(translate=('languages', language)))
+                    ],
+                ),
+                color=(0, 1, 0),
+            )
 
-    def get_resource(self,
-                     resource: str,
-                     fallback_resource: str = None,
-                     fallback_value: Any = None) -> Any:
+    def get_resource(
+        self,
+        resource: str,
+        fallback_resource: str | None = None,
+        fallback_value: Any = None,
+    ) -> Any:
         """Return a translation resource by name.
 
         DEPRECATED; use ba.Lstr functionality for these purposes.
@@ -250,24 +281,29 @@ class LanguageSubsystem:
             if self.language_merged is None:
                 language = self.language
                 try:
-                    self.setlanguage(language,
-                                     print_change=False,
-                                     store_to_config=False)
+                    self.setlanguage(
+                        language, print_change=False, store_to_config=False
+                    )
                 except Exception:
                     from ba import _error
-                    _error.print_exception('exception setting language to',
-                                           language)
+
+                    _error.print_exception(
+                        'exception setting language to', language
+                    )
 
                     # Try english as a fallback.
                     if language != 'English':
                         print('Resorting to fallback language (English)')
                         try:
-                            self.setlanguage('English',
-                                             print_change=False,
-                                             store_to_config=False)
+                            self.setlanguage(
+                                'English',
+                                print_change=False,
+                                store_to_config=False,
+                            )
                         except Exception:
                             _error.print_exception(
-                                'error setting language to english fallback')
+                                'error setting language to english fallback'
+                            )
 
             # If they provided a fallback_resource value, try the
             # target-language-only dict first and then fall back to trying the
@@ -324,16 +360,20 @@ class LanguageSubsystem:
             # anywhere. Now if we've been given a fallback value, return it;
             # otherwise fail.
             from ba import _error
+
             if fallback_value is not None:
                 return fallback_value
             raise _error.NotFoundError(
-                f"Resource not found: '{resource}'") from None
+                f"Resource not found: '{resource}'"
+            ) from None
 
-    def translate(self,
-                  category: str,
-                  strval: str,
-                  raise_exceptions: bool = False,
-                  print_errors: bool = False) -> str:
+    def translate(
+        self,
+        category: str,
+        strval: str,
+        raise_exceptions: bool = False,
+        print_errors: bool = False,
+    ) -> str:
         """Translate a value (or return the value if no translation available)
 
         DEPRECATED; use ba.Lstr functionality for these purposes.
@@ -344,8 +384,17 @@ class LanguageSubsystem:
             if raise_exceptions:
                 raise
             if print_errors:
-                print(('Translate error: category=\'' + category +
-                       '\' name=\'' + strval + '\' exc=' + str(exc) + ''))
+                print(
+                    (
+                        'Translate error: category=\''
+                        + category
+                        + '\' name=\''
+                        + strval
+                        + '\' exc='
+                        + str(exc)
+                        + ''
+                    )
+                )
             translated = None
         translated_out: str
         if translated is None:
@@ -366,64 +415,68 @@ class LanguageSubsystem:
 class Lstr:
     """Used to define strings in a language-independent way.
 
-    category: General Utility Classes
+    Category: **General Utility Classes**
 
     These should be used whenever possible in place of hard-coded strings
     so that in-game or UI elements show up correctly on all clients in their
     currently-active language.
 
     To see available resource keys, look at any of the bs_language_*.py files
-    in the game or the translations pages at bombsquadgame.com/translate.
+    in the game or the translations pages at legacy.ballistica.net/translate.
 
-    # EXAMPLE 1: specify a string from a resource path
-    mynode.text = ba.Lstr(resource='audioSettingsWindow.titleText')
+    ##### Examples
+    EXAMPLE 1: specify a string from a resource path
+    >>> mynode.text = ba.Lstr(resource='audioSettingsWindow.titleText')
 
-    # EXAMPLE 2: specify a translated string via a category and english value;
-    # if a translated value is available, it will be used; otherwise the
-    # english value will be. To see available translation categories, look
-    # under the 'translations' resource section.
-    mynode.text = ba.Lstr(translate=('gameDescriptions', 'Defeat all enemies'))
+    EXAMPLE 2: specify a translated string via a category and english
+    value; if a translated value is available, it will be used; otherwise
+    the english value will be. To see available translation categories,
+    look under the 'translations' resource section.
+    >>> mynode.text = ba.Lstr(translate=('gameDescriptions',
+    ...                                  'Defeat all enemies'))
 
-    # EXAMPLE 3: specify a raw value and some substitutions.  Substitutions can
-    # be used with resource and translate modes as well.
-    mynode.text = ba.Lstr(value='${A} / ${B}',
-                          subs=[('${A}', str(score)), ('${B}', str(total))])
+    EXAMPLE 3: specify a raw value and some substitutions. Substitutions
+    can be used with resource and translate modes as well.
+    >>> mynode.text = ba.Lstr(value='${A} / ${B}',
+    ...               subs=[('${A}', str(score)), ('${B}', str(total))])
 
-    # EXAMPLE 4: Lstrs can be nested.  This example would display the resource
-    # at res_a but replace ${NAME} with the value of the resource at res_b
-    mytextnode.text = ba.Lstr(resource='res_a',
-                              subs=[('${NAME}', ba.Lstr(resource='res_b'))])
+    EXAMPLE 4: ba.Lstr's can be nested. This example would display the
+    resource at res_a but replace ${NAME} with the value of the
+    resource at res_b
+    >>> mytextnode.text = ba.Lstr(
+    ...     resource='res_a',
+    ...     subs=[('${NAME}', ba.Lstr(resource='res_b'))])
     """
 
     # pylint: disable=dangerous-default-value
     # noinspection PyDefaultArgument
     @overload
-    def __init__(self,
-                 *,
-                 resource: str,
-                 fallback_resource: str = '',
-                 fallback_value: str = '',
-                 subs: Sequence[tuple[str, Union[str, Lstr]]] = []) -> None:
+    def __init__(
+        self,
+        *,
+        resource: str,
+        fallback_resource: str = '',
+        fallback_value: str = '',
+        subs: Sequence[tuple[str, str | Lstr]] = [],
+    ) -> None:
         """Create an Lstr from a string resource."""
-        ...
 
     # noinspection PyShadowingNames,PyDefaultArgument
     @overload
-    def __init__(self,
-                 *,
-                 translate: tuple[str, str],
-                 subs: Sequence[tuple[str, Union[str, Lstr]]] = []) -> None:
+    def __init__(
+        self,
+        *,
+        translate: tuple[str, str],
+        subs: Sequence[tuple[str, str | Lstr]] = [],
+    ) -> None:
         """Create an Lstr by translating a string in a category."""
-        ...
 
     # noinspection PyDefaultArgument
     @overload
-    def __init__(self,
-                 *,
-                 value: str,
-                 subs: Sequence[tuple[str, Union[str, Lstr]]] = []) -> None:
+    def __init__(
+        self, *, value: str, subs: Sequence[tuple[str, str | Lstr]] = []
+    ) -> None:
         """Create an Lstr from a raw string value."""
-        ...
 
     # pylint: enable=redefined-outer-name, dangerous-default-value
 
@@ -476,10 +529,12 @@ class Lstr:
             del keywds['value']
         if 'fallback' in keywds:
             from ba import _error
+
             _error.print_error(
                 'deprecated "fallback" arg passed to Lstr(); use '
                 'either "fallback_resource" or "fallback_value"',
-                once=True)
+                once=True,
+            )
             keywds['f'] = keywds['fallback']
             del keywds['fallback']
         if 'fallback_resource' in keywds:
@@ -515,6 +570,7 @@ class Lstr:
             return json.dumps(self.args, separators=(',', ':'))
         except Exception:
             from ba import _error
+
             _error.print_exception('_get_json failed for', self.args)
             return 'JSON_ERR'
 
@@ -540,13 +596,20 @@ def _add_to_attr_dict(dst: AttrDict, src: dict) -> None:
             except Exception:
                 dst_dict = dst[key] = AttrDict()
             if not isinstance(dst_dict, AttrDict):
-                raise RuntimeError("language key '" + key +
-                                   "' is defined both as a dict and value")
+                raise RuntimeError(
+                    "language key '"
+                    + key
+                    + "' is defined both as a dict and value"
+                )
             _add_to_attr_dict(dst_dict, value)
         else:
             if not isinstance(value, (float, int, bool, str, str, type(None))):
-                raise TypeError("invalid value type for res '" + key + "': " +
-                                str(type(value)))
+                raise TypeError(
+                    "invalid value type for res '"
+                    + key
+                    + "': "
+                    + str(type(value))
+                )
             dst[key] = value
 
 

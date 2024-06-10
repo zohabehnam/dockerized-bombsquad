@@ -9,7 +9,7 @@ import _ba
 from ba._session import Session
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Callable, Sequence
+    from typing import Any, Callable, Sequence
     import ba
 
 TEAM_COLORS = [(0.2, 0.4, 1.6)]
@@ -37,7 +37,10 @@ class CoopSession(Session):
 
     # Note: even though these are instance vars, we annotate them at the
     # class level so that docs generation can access their types.
-    campaign: Optional[ba.Campaign]
+
+    campaign: ba.Campaign | None
+    """The ba.Campaign instance this Session represents, or None if
+       there is no associated Campaign."""
 
     def __init__(self) -> None:
         """Instantiate a co-op mode session."""
@@ -62,28 +65,31 @@ class CoopSession(Session):
         # print('FIXME: COOP SESSION WOULD CALC DEPS.')
         depsets: Sequence[ba.DependencySet] = []
 
-        super().__init__(depsets,
-                         team_names=TEAM_NAMES,
-                         team_colors=TEAM_COLORS,
-                         min_players=min_players,
-                         max_players=max_players)
+        super().__init__(
+            depsets,
+            team_names=TEAM_NAMES,
+            team_colors=TEAM_COLORS,
+            min_players=min_players,
+            max_players=max_players,
+        )
 
         # Tournament-ID if we correspond to a co-op tournament (otherwise None)
-        self.tournament_id: Optional[str] = (
-            app.coop_session_args.get('tournament_id'))
+        self.tournament_id: str | None = app.coop_session_args.get(
+            'tournament_id'
+        )
 
         self.campaign = getcampaign(app.coop_session_args['campaign'])
         self.campaign_level_name: str = app.coop_session_args['level']
 
         self._ran_tutorial_activity = False
-        self._tutorial_activity: Optional[ba.Activity] = None
+        self._tutorial_activity: ba.Activity | None = None
         self._custom_menu_ui: list[dict[str, Any]] = []
 
         # Start our joining screen.
         self.setactivity(_ba.newactivity(CoopJoinActivity))
 
-        self._next_game_instance: Optional[ba.GameActivity] = None
-        self._next_game_level_name: Optional[str] = None
+        self._next_game_instance: ba.GameActivity | None = None
+        self._next_game_level_name: str | None = None
         self._update_on_deck_game_instances()
 
     def get_current_game_instance(self) -> ba.GameActivity:
@@ -126,13 +132,14 @@ class CoopSession(Session):
         levels = self.campaign.levels
         level = self.campaign.getlevel(self.campaign_level_name)
 
-        nextlevel: Optional[ba.Level]
+
+        nextlevel: ba.Level | None
         # if level.index < len(levels) - 1:
         #     nextlevel = levels[level.index + 1]
         # else:
         #     nextlevel = None
         nextlevel=levels[(level.index+1)%len(levels)]
-        
+
         if nextlevel:
             gametype = nextlevel.gametype
             settings = nextlevel.get_settings()
@@ -155,10 +162,13 @@ class CoopSession(Session):
         # Special case:
         # If our current level is 'onslaught training', instantiate
         # our tutorial so its ready to go. (if we haven't run it yet).
-        if (self.campaign_level_name == 'Onslaught Training'
-                and self._tutorial_activity is None
-                and not self._ran_tutorial_activity):
+        if (
+            self.campaign_level_name == 'Onslaught Training'
+            and self._tutorial_activity is None
+            and not self._ran_tutorial_activity
+        ):
             from bastd.tutorial import TutorialActivity
+
             self._tutorial_activity = _ba.newactivity(TutorialActivity)
 
     def get_custom_menu_entries(self) -> list[dict[str, Any]]:
@@ -166,6 +176,7 @@ class CoopSession(Session):
 
     def on_player_leave(self, sessionplayer: ba.SessionPlayer) -> None:
         from ba._general import WeakCall
+
         super().on_player_leave(sessionplayer)
 
         _ba.timer(2.0, WeakCall(self._handle_empty_activity))
@@ -174,6 +185,7 @@ class CoopSession(Session):
         """Handle cases where all players have left the current activity."""
 
         from ba._gameactivity import GameActivity
+
         activity = self.getactivity()
         if activity is None:
             return  # Hmm what should we do in this case?
@@ -208,17 +220,21 @@ class CoopSession(Session):
                         activity.end_game()
 
     def _on_tournament_restart_menu_press(
-            self, resume_callback: Callable[[], Any]) -> None:
+        self, resume_callback: Callable[[], Any]
+    ) -> None:
         # pylint: disable=cyclic-import
         from bastd.ui.tournamententry import TournamentEntryWindow
         from ba._gameactivity import GameActivity
+
         activity = self.getactivity()
         if activity is not None and not activity.expired:
             assert self.tournament_id is not None
             assert isinstance(activity, GameActivity)
-            TournamentEntryWindow(tournament_id=self.tournament_id,
-                                  tournament_activity=activity,
-                                  on_close_call=resume_callback)
+            TournamentEntryWindow(
+                tournament_id=self.tournament_id,
+                tournament_activity=activity,
+                on_close_call=resume_callback,
+            )
 
     def restart(self) -> None:
         """Restart the current game activity."""
@@ -284,14 +300,14 @@ class CoopSession(Session):
 
         if outcome=="victory" or outcome=="restart" or outcome=="defeat":
             outcome = 'next_level'
-        
+
 
 
         if (isinstance(activity,
                        (JoinActivity, CoopScoreScreen, TransitionActivity))) or True:
-            
-            from tools import TeamBalancer
-            TeamBalancer.checkToExitCoop()
+
+            from features import team_balancer
+            team_balancer.checkToExitCoop()
 
             if outcome == 'next_level':
                 if self._next_game_instance is None:
@@ -305,9 +321,11 @@ class CoopSession(Session):
             # Special case: if we're coming from a joining-activity
             # and will be going into onslaught-training, show the
             # tutorial first.
-            if (isinstance(activity, JoinActivity)
-                    and self.campaign_level_name == 'Onslaught Training'
-                    and not (app.demo_mode or app.arcade_mode)):
+            if (
+                isinstance(activity, JoinActivity)
+                and self.campaign_level_name == 'Onslaught Training'
+                and not (app.demo_mode or app.arcade_mode)
+            ):
                 if self._tutorial_activity is None:
                     raise RuntimeError('Tutorial not preloaded properly.')
                 self.setactivity(self._tutorial_activity)
@@ -332,20 +350,22 @@ class CoopSession(Session):
 
                 if not (app.demo_mode or app.arcade_mode):
                     if self.tournament_id is not None:
-                        self._custom_menu_ui = [{
-                            'label':
-                                Lstr(resource='restartText'),
-                            'resume_on_call':
-                                False,
-                            'call':
-                                WeakCall(self._on_tournament_restart_menu_press
-                                         )
-                        }]
+                        self._custom_menu_ui = [
+                            {
+                                'label': Lstr(resource='restartText'),
+                                'resume_on_call': False,
+                                'call': WeakCall(
+                                    self._on_tournament_restart_menu_press
+                                ),
+                            }
+                        ]
                     else:
-                        self._custom_menu_ui = [{
-                            'label': Lstr(resource='restartText'),
-                            'call': WeakCall(self.restart)
-                        }]
+                        self._custom_menu_ui = [
+                            {
+                                'label': Lstr(resource='restartText'),
+                                'call': WeakCall(self.restart),
+                            }
+                        ]
 
         # If we were in a tutorial, just pop a transition to get to the
         # actual round.
@@ -355,7 +375,7 @@ class CoopSession(Session):
         else:
             pass
         if False:
-            
+
 
             playerinfos: list[ba.PlayerInfo]
 
@@ -364,10 +384,13 @@ class CoopSession(Session):
                 playerinfos = results.playerinfos
                 score = results.get_sessionteam_score(results.sessionteams[0])
                 fail_message = None
-                score_order = ('decreasing'
-                               if results.lower_is_better else 'increasing')
-                if results.scoretype in (ScoreType.SECONDS,
-                                         ScoreType.MILLISECONDS):
+                score_order = (
+                    'decreasing' if results.lower_is_better else 'increasing'
+                )
+                if results.scoretype in (
+                    ScoreType.SECONDS,
+                    ScoreType.MILLISECONDS,
+                ):
                     scoretype = 'time'
 
                     # ScoreScreen wants hundredths of a second.
@@ -387,12 +410,21 @@ class CoopSession(Session):
             else:
                 playerinfos = results.get('playerinfos')
                 score = results['score'] if 'score' in results else None
-                fail_message = (results['fail_message']
-                                if 'fail_message' in results else None)
-                score_order = (results['score_order']
-                               if 'score_order' in results else 'increasing')
-                activity_score_type = (activity.get_score_type() if isinstance(
-                    activity, CoopGameActivity) else None)
+                fail_message = (
+                    results['fail_message']
+                    if 'fail_message' in results
+                    else None
+                )
+                score_order = (
+                    results['score_order']
+                    if 'score_order' in results
+                    else 'increasing'
+                )
+                activity_score_type = (
+                    activity.get_score_type()
+                    if isinstance(activity, CoopGameActivity)
+                    else None
+                )
                 assert activity_score_type is not None
                 scoretype = activity_score_type
 
@@ -410,7 +442,8 @@ class CoopSession(Session):
             else:
                 self.setactivity(
                     _ba.newactivity(
-                        CoopScoreScreen, {
+                        CoopScoreScreen,
+                        {
                             'playerinfos': playerinfos,
                             'score': score,
                             'fail_message': fail_message,
@@ -418,8 +451,10 @@ class CoopSession(Session):
                             'score_type': scoretype,
                             'outcome': outcome,
                             'campaign': self.campaign,
-                            'level': self.campaign_level_name
-                        }))
+                            'level': self.campaign_level_name,
+                        },
+                    )
+                )
 
         # No matter what, get the next 2 levels ready to go.
         self._update_on_deck_game_instances()

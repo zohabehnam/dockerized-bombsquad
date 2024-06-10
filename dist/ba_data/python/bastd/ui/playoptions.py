@@ -6,22 +6,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import _ba
 import ba
+import ba.internal
 from bastd.ui import popup
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Union
+    from typing import Any
 
 
 class PlayOptionsWindow(popup.PopupWindow):
     """A popup window for configuring play options."""
 
-    def __init__(self,
-                 sessiontype: type[ba.Session],
-                 playlist: str,
-                 scale_origin: tuple[float, float],
-                 delegate: Any = None):
+    def __init__(
+        self,
+        sessiontype: type[ba.Session],
+        playlist: str,
+        scale_origin: tuple[float, float],
+        delegate: Any = None,
+    ):
         # FIXME: Tidy this up.
         # pylint: disable=too-many-branches
         # pylint: disable=too-many-statements
@@ -38,8 +40,9 @@ class PlayOptionsWindow(popup.PopupWindow):
         # vs starting a game directly (should make this more elegant).
         self._selecting_mode = ba.app.ui.selecting_private_party_playlist
 
-        self._do_randomize_val = (ba.app.config.get(
-            self._pvars.config_name + ' Playlist Randomize', 0))
+        self._do_randomize_val = ba.app.config.get(
+            self._pvars.config_name + ' Playlist Randomize', 0
+        )
 
         self._sessiontype = sessiontype
         self._playlist = playlist
@@ -73,24 +76,34 @@ class PlayOptionsWindow(popup.PopupWindow):
                 plst = self._pvars.get_default_list_call()
             else:
                 try:
-                    plst = ba.app.config[self._pvars.config_name +
-                                         ' Playlists'][name]
+                    plst = ba.app.config[
+                        self._pvars.config_name + ' Playlists'
+                    ][name]
                 except Exception:
-                    print('ERROR INFO: self._config_name is:',
-                          self._pvars.config_name)
+                    print(
+                        'ERROR INFO: self._config_name is:',
+                        self._pvars.config_name,
+                    )
                     print(
                         'ERROR INFO: playlist names are:',
-                        list(ba.app.config[self._pvars.config_name +
-                                           ' Playlists'].keys()))
+                        list(
+                            ba.app.config[
+                                self._pvars.config_name + ' Playlists'
+                            ].keys()
+                        ),
+                    )
                     raise
-            plst = filter_playlist(plst,
-                                   self._sessiontype,
-                                   remove_unowned=False,
-                                   mark_unowned=True)
+            plst = filter_playlist(
+                plst,
+                self._sessiontype,
+                remove_unowned=False,
+                mark_unowned=True,
+                name=name,
+            )
             game_count = len(plst)
             for entry in plst:
                 mapname = entry['settings']['map']
-                maptype: Optional[type[ba.Map]]
+                maptype: type[ba.Map] | None
                 try:
                     maptype = get_map_class(mapname)
                 except ba.NotFoundError:
@@ -126,25 +139,33 @@ class PlayOptionsWindow(popup.PopupWindow):
 
         # Creates our _root_widget.
         uiscale = ba.app.ui.uiscale
-        scale = (1.69 if uiscale is ba.UIScale.SMALL else
-                 1.1 if uiscale is ba.UIScale.MEDIUM else 0.85)
-        super().__init__(position=scale_origin,
-                         size=(self._width, self._height),
-                         scale=scale)
+        scale = (
+            1.69
+            if uiscale is ba.UIScale.SMALL
+            else 1.1
+            if uiscale is ba.UIScale.MEDIUM
+            else 0.85
+        )
+        super().__init__(
+            position=scale_origin, size=(self._width, self._height), scale=scale
+        )
 
-        playlist_name: Union[str, ba.Lstr] = (self._pvars.default_list_name
-                                              if playlist == '__default__' else
-                                              playlist)
-        self._title_text = ba.textwidget(parent=self.root_widget,
-                                         position=(self._width * 0.5,
-                                                   self._height - 89 + 51),
-                                         size=(0, 0),
-                                         text=playlist_name,
-                                         scale=1.4,
-                                         color=(1, 1, 1),
-                                         maxwidth=self._width * 0.7,
-                                         h_align='center',
-                                         v_align='center')
+        playlist_name: str | ba.Lstr = (
+            self._pvars.default_list_name
+            if playlist == '__default__'
+            else playlist
+        )
+        self._title_text = ba.textwidget(
+            parent=self.root_widget,
+            position=(self._width * 0.5, self._height - 89 + 51),
+            size=(0, 0),
+            text=playlist_name,
+            scale=1.4,
+            color=(1, 1, 1),
+            maxwidth=self._width * 0.7,
+            h_align='center',
+            v_align='center',
+        )
 
         self._cancel_button = ba.buttonwidget(
             parent=self.root_widget,
@@ -156,7 +177,8 @@ class PlayOptionsWindow(popup.PopupWindow):
             on_activate_call=self._on_cancel_press,
             autoselect=True,
             icon=ba.gettexture('crossOut'),
-            iconscale=1.2)
+            iconscale=1.2,
+        )
 
         h_offs_img = self._width * 0.5 - c_width_total * 0.5
         v_offs_img = self._height - 118 - scl * 125.0 + 50
@@ -171,27 +193,34 @@ class PlayOptionsWindow(popup.PopupWindow):
                     h = h_offs_img + scl * 250 * col
                     v = v_offs_img - self._row_height * row
                     entry = map_texture_entries[tex_index]
-                    owned = not (('is_unowned_map' in entry
-                                  and entry['is_unowned_map']) or
-                                 ('is_unowned_game' in entry
-                                  and entry['is_unowned_game']))
+                    owned = not (
+                        ('is_unowned_map' in entry and entry['is_unowned_map'])
+                        or (
+                            'is_unowned_game' in entry
+                            and entry['is_unowned_game']
+                        )
+                    )
 
                     if owned:
                         self._have_at_least_one_owned = True
 
                     try:
-                        desc = getclass(entry['type'],
-                                        subclassof=ba.GameActivity
-                                        ).get_settings_display_string(entry)
+                        desc = getclass(
+                            entry['type'], subclassof=ba.GameActivity
+                        ).get_settings_display_string(entry)
                         if not owned:
                             desc = ba.Lstr(
                                 value='${DESC}\n${UNLOCK}',
                                 subs=[
                                     ('${DESC}', desc),
-                                    ('${UNLOCK}',
-                                     ba.Lstr(
-                                         resource='unlockThisInTheStoreText'))
-                                ])
+                                    (
+                                        '${UNLOCK}',
+                                        ba.Lstr(
+                                            resource='unlockThisInTheStoreText'
+                                        ),
+                                    ),
+                                ],
+                            )
                         desc_color = (0, 1, 0) if owned else (1, 0, 0)
                     except Exception:
                         desc = ba.Lstr(value='(invalid)')
@@ -203,14 +232,16 @@ class PlayOptionsWindow(popup.PopupWindow):
                         position=(h, v),
                         texture=ba.gettexture(tex_name if owned else 'empty'),
                         model_opaque=model_opaque if owned else None,
-                        on_activate_call=ba.Call(ba.screenmessage, desc,
-                                                 desc_color),
+                        on_activate_call=ba.Call(
+                            ba.screenmessage, desc, desc_color
+                        ),
                         label='',
                         color=(1, 1, 1),
                         autoselect=True,
                         extra_touch_border_scale=0.0,
                         model_transparent=model_transparent if owned else None,
-                        mask_texture=mask_tex if owned else None)
+                        mask_texture=mask_tex if owned else None,
+                    )
                     if row == 0 and col == 0:
                         ba.widget(edit=self._cancel_button, down_widget=btn)
                     if row == rows - 1:
@@ -220,26 +251,29 @@ class PlayOptionsWindow(popup.PopupWindow):
                         # Ewww; buttons don't currently have alpha so in this
                         # case we draw an image over our button with an empty
                         # texture on it.
-                        ba.imagewidget(parent=self.root_widget,
-                                       size=(scl * 260.0, scl * 130.0),
-                                       position=(h - 10.0 * scl,
-                                                 v - 4.0 * scl),
-                                       draw_controller=btn,
-                                       color=(1, 1, 1),
-                                       texture=ba.gettexture(tex_name),
-                                       model_opaque=model_opaque,
-                                       opacity=0.25,
-                                       model_transparent=model_transparent,
-                                       mask_texture=mask_tex)
+                        ba.imagewidget(
+                            parent=self.root_widget,
+                            size=(scl * 260.0, scl * 130.0),
+                            position=(h - 10.0 * scl, v - 4.0 * scl),
+                            draw_controller=btn,
+                            color=(1, 1, 1),
+                            texture=ba.gettexture(tex_name),
+                            model_opaque=model_opaque,
+                            opacity=0.25,
+                            model_transparent=model_transparent,
+                            mask_texture=mask_tex,
+                        )
 
-                        ba.imagewidget(parent=self.root_widget,
-                                       size=(scl * 100, scl * 100),
-                                       draw_controller=btn,
-                                       position=(h + scl * 70, v + scl * 10),
-                                       texture=ba.gettexture('lock'))
+                        ba.imagewidget(
+                            parent=self.root_widget,
+                            size=(scl * 100, scl * 100),
+                            draw_controller=btn,
+                            position=(h + scl * 70, v + scl * 10),
+                            texture=ba.gettexture('lock'),
+                        )
 
         # Team names/colors.
-        self._custom_colors_names_button: Optional[ba.Widget]
+        self._custom_colors_names_button: ba.Widget | None
         if self._sessiontype is ba.DualTeamSession:
             y_offs = 50 if show_shuffle_check_box else 0
             self._custom_colors_names_button = ba.buttonwidget(
@@ -249,14 +283,16 @@ class PlayOptionsWindow(popup.PopupWindow):
                 on_activate_call=ba.WeakCall(self._custom_colors_names_press),
                 autoselect=True,
                 textcolor=(0.8, 0.8, 0.8),
-                label=ba.Lstr(resource='teamNamesColorText'))
-            if not ba.app.accounts.have_pro():
+                label=ba.Lstr(resource='teamNamesColorText'),
+            )
+            if not ba.app.accounts_v1.have_pro():
                 ba.imagewidget(
                     parent=self.root_widget,
                     size=(30, 30),
                     position=(95, 202 + y_offs),
                     texture=ba.gettexture('lock'),
-                    draw_controller=self._custom_colors_names_button)
+                    draw_controller=self._custom_colors_names_button,
+                )
         else:
             self._custom_colors_names_button = None
 
@@ -264,8 +300,9 @@ class PlayOptionsWindow(popup.PopupWindow):
         def _cb_callback(val: bool) -> None:
             self._do_randomize_val = val
             cfg = ba.app.config
-            cfg[self._pvars.config_name +
-                ' Playlist Randomize'] = self._do_randomize_val
+            cfg[
+                self._pvars.config_name + ' Playlist Randomize'
+            ] = self._do_randomize_val
             cfg.commit()
 
         if show_shuffle_check_box:
@@ -279,7 +316,8 @@ class PlayOptionsWindow(popup.PopupWindow):
                 maxwidth=300,
                 textcolor=(0.8, 0.8, 0.8),
                 value=self._do_randomize_val,
-                on_value_change_call=_cb_callback)
+                on_value_change_call=_cb_callback,
+            )
 
         # Show tutorial.
         show_tutorial = bool(ba.app.config.get('Show Tutorial', True))
@@ -299,24 +337,34 @@ class PlayOptionsWindow(popup.PopupWindow):
             maxwidth=300,
             textcolor=(0.8, 0.8, 0.8),
             value=show_tutorial,
-            on_value_change_call=_cb_callback_2)
+            on_value_change_call=_cb_callback_2,
+        )
 
         # Grumble: current autoselect doesn't do a very good job
         # with checkboxes.
         if self._custom_colors_names_button is not None:
             for btn in bottom_row_buttons:
-                ba.widget(edit=btn,
-                          down_widget=self._custom_colors_names_button)
+                ba.widget(
+                    edit=btn, down_widget=self._custom_colors_names_button
+                )
             if show_shuffle_check_box:
-                ba.widget(edit=self._custom_colors_names_button,
-                          down_widget=self._shuffle_check_box)
-                ba.widget(edit=self._shuffle_check_box,
-                          up_widget=self._custom_colors_names_button)
+                ba.widget(
+                    edit=self._custom_colors_names_button,
+                    down_widget=self._shuffle_check_box,
+                )
+                ba.widget(
+                    edit=self._shuffle_check_box,
+                    up_widget=self._custom_colors_names_button,
+                )
             else:
-                ba.widget(edit=self._custom_colors_names_button,
-                          down_widget=self._show_tutorial_check_box)
-                ba.widget(edit=self._show_tutorial_check_box,
-                          up_widget=self._custom_colors_names_button)
+                ba.widget(
+                    edit=self._custom_colors_names_button,
+                    down_widget=self._show_tutorial_check_box,
+                )
+                ba.widget(
+                    edit=self._show_tutorial_check_box,
+                    up_widget=self._custom_colors_names_button,
+                )
 
         self._ok_button = ba.buttonwidget(
             parent=self.root_widget,
@@ -327,43 +375,53 @@ class PlayOptionsWindow(popup.PopupWindow):
             on_activate_call=self._on_ok_press,
             autoselect=True,
             label=ba.Lstr(
-                resource='okText' if self._selecting_mode else 'playText'))
+                resource='okText' if self._selecting_mode else 'playText'
+            ),
+        )
 
-        ba.widget(edit=self._ok_button,
-                  up_widget=self._show_tutorial_check_box)
+        ba.widget(edit=self._ok_button, up_widget=self._show_tutorial_check_box)
 
-        ba.containerwidget(edit=self.root_widget,
-                           start_button=self._ok_button,
-                           cancel_button=self._cancel_button,
-                           selected_child=self._ok_button)
+        ba.containerwidget(
+            edit=self.root_widget,
+            start_button=self._ok_button,
+            cancel_button=self._cancel_button,
+            selected_child=self._ok_button,
+        )
 
         # Update now and once per second.
-        self._update_timer = ba.Timer(1.0,
-                                      ba.WeakCall(self._update),
-                                      timetype=ba.TimeType.REAL,
-                                      repeat=True)
+        self._update_timer = ba.Timer(
+            1.0,
+            ba.WeakCall(self._update),
+            timetype=ba.TimeType.REAL,
+            repeat=True,
+        )
         self._update()
 
     def _custom_colors_names_press(self) -> None:
         from bastd.ui.account import show_sign_in_prompt
         from bastd.ui.teamnamescolors import TeamNamesColorsWindow
         from bastd.ui.purchase import PurchaseWindow
-        if not ba.app.accounts.have_pro():
-            if _ba.get_account_state() != 'signed_in':
+
+        if not ba.app.accounts_v1.have_pro():
+            if ba.internal.get_v1_account_state() != 'signed_in':
                 show_sign_in_prompt()
             else:
                 PurchaseWindow(items=['pro'])
             self._transition_out()
             return
         assert self._custom_colors_names_button
-        TeamNamesColorsWindow(scale_origin=self._custom_colors_names_button.
-                              get_screen_space_center())
+        TeamNamesColorsWindow(
+            scale_origin=(
+                self._custom_colors_names_button.get_screen_space_center()
+            )
+        )
 
     def _does_target_playlist_exist(self) -> bool:
         if self._playlist == '__default__':
             return True
         return self._playlist in ba.app.config.get(
-            self._pvars.config_name + ' Playlists', {})
+            self._pvars.config_name + ' Playlists', {}
+        )
 
     def _update(self) -> None:
         # All we do here is make sure our targeted playlist still exists,
@@ -392,8 +450,10 @@ class PlayOptionsWindow(popup.PopupWindow):
         # Disallow if we have no unlocked games.
         if not self._have_at_least_one_owned:
             ba.playsound(ba.getsound('error'))
-            ba.screenmessage(ba.Lstr(resource='playlistNoValidGamesErrorText'),
-                             color=(1, 0, 0))
+            ba.screenmessage(
+                ba.Lstr(resource='playlistNoValidGamesErrorText'),
+                color=(1, 0, 0),
+            )
             return
 
         cfg = ba.app.config
@@ -403,6 +463,7 @@ class PlayOptionsWindow(popup.PopupWindow):
         # or start the game in regular mode.
         if self._selecting_mode:
             from bastd.ui.gather import GatherWindow
+
             if self._sessiontype is ba.FreeForAllSession:
                 typename = 'ffa'
             elif self._sessiontype is ba.DualTeamSession:
@@ -412,13 +473,14 @@ class PlayOptionsWindow(popup.PopupWindow):
             cfg['Private Party Host Session Type'] = typename
             ba.playsound(ba.getsound('gunCocking'))
             ba.app.ui.set_main_menu_window(
-                GatherWindow(transition='in_right').get_root_widget())
+                GatherWindow(transition='in_right').get_root_widget()
+            )
             self._transition_out(transition='out_left')
             if self._delegate is not None:
                 self._delegate.on_play_options_window_run_game()
         else:
-            _ba.fade_screen(False, endcall=self._run_selected_playlist)
-            _ba.lock_all_input()
+            ba.internal.fade_screen(False, endcall=self._run_selected_playlist)
+            ba.internal.lock_all_input()
             self._transition_out(transition='out_left')
             if self._delegate is not None:
                 self._delegate.on_play_options_window_run_game()
@@ -426,12 +488,13 @@ class PlayOptionsWindow(popup.PopupWindow):
         cfg.commit()
 
     def _run_selected_playlist(self) -> None:
-        _ba.unlock_all_input()
+        ba.internal.unlock_all_input()
         try:
-            _ba.new_host_session(self._sessiontype)
+            ba.internal.new_host_session(self._sessiontype)
         except Exception:
             from bastd import mainmenu
+
             ba.print_exception('exception running session', self._sessiontype)
 
             # Drop back into a main menu session.
-            _ba.new_host_session(mainmenu.MainMenuSession)
+            ba.internal.new_host_session(mainmenu.MainMenuSession)

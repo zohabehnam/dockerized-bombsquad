@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bombsquad
+  namespace: miare
+  labels:
+    app: bombsquad
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bombsquad
+  template:
+    metadata:
+      name: bombsquad
+      labels:
+        app: bombsquad
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: bombsquad
+          image: git.miare.ir:5050/miare/images/bombsquad:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 43210
+              protocol: UDP
+      restartPolicy: Always

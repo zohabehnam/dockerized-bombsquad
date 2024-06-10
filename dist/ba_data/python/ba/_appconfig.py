@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class AppConfig(dict):
     """A special dict that holds the game's persistent configuration values.
 
-    Category: App Classes
+    Category: **App Classes**
 
     It also provides methods for fetching values with app-defined fallback
     defaults, applying contained values to the game, and committing the
@@ -115,25 +115,32 @@ def read_config() -> tuple[AppConfig, bool]:
         config_file_healthy = True
 
     except Exception as exc:
-        print(('error reading config file at time ' +
-               str(_ba.time(TimeType.REAL)) + ': \'' + config_file_path +
-               '\':\n'), exc)
+        print(
+            (
+                'error reading config file at time '
+                + str(_ba.time(TimeType.REAL))
+                + ': \''
+                + config_file_path
+                + '\':\n'
+            ),
+            exc,
+        )
 
         # Whenever this happens lets back up the broken one just in case it
         # gets overwritten accidentally.
-        print(('backing up current config file to \'' + config_file_path +
-               ".broken\'"))
+        print(
+            (
+                'backing up current config file to \''
+                + config_file_path
+                + ".broken\'"
+            )
+        )
         try:
             import shutil
+
             shutil.copyfile(config_file_path, config_file_path + '.broken')
-        except Exception as exc:
-            print('EXC copying broken config:', exc)
-        try:
-            _ba.log('broken config contents:\n' +
-                    config_contents.replace('\000', '<NULL_BYTE>'),
-                    to_stdout=False)
-        except Exception as exc:
-            print('EXC logging broken config contents:', exc)
+        except Exception as exc2:
+            print('EXC copying broken config:', exc2)
         config = AppConfig()
 
         # Now attempt to read one of our 'prev' backup copies.
@@ -147,20 +154,24 @@ def read_config() -> tuple[AppConfig, bool]:
                 config = AppConfig()
             config_file_healthy = True
             print('successfully read backup config.')
-        except Exception as exc:
-            print('EXC reading prev backup config:', exc)
+        except Exception as exc2:
+            print('EXC reading prev backup config:', exc2)
     return config, config_file_healthy
 
 
 def commit_app_config(force: bool = False) -> None:
     """Commit the config to persistent storage.
 
-    Category: General Utility Functions
+    Category: **General Utility Functions**
 
     (internal)
     """
+    from ba._internal import mark_config_dirty
+
     if not _ba.app.config_file_healthy and not force:
-        print('Current config file is broken; '
-              'skipping write to avoid losing settings.')
+        print(
+            'Current config file is broken; '
+            'skipping write to avoid losing settings.'
+        )
         return
-    _ba.mark_config_dirty()
+    mark_config_dirty()

@@ -2,7 +2,7 @@
 #
 """Defines a capture-the-flag game."""
 
-# ba_meta require api 6
+# ba_meta require api 7
 # (see https://ballistica.net/wiki/meta-tag-system)
 
 from __future__ import annotations
@@ -12,11 +12,16 @@ from typing import TYPE_CHECKING
 import ba
 from bastd.actor.playerspaz import PlayerSpaz
 from bastd.actor.scoreboard import Scoreboard
-from bastd.actor.flag import (FlagFactory, Flag, FlagPickedUpMessage,
-                              FlagDroppedMessage, FlagDiedMessage)
+from bastd.actor.flag import (
+    FlagFactory,
+    Flag,
+    FlagPickedUpMessage,
+    FlagDroppedMessage,
+    FlagDiedMessage,
+)
 
 if TYPE_CHECKING:
-    from typing import Any, Sequence, Union, Optional
+    from typing import Any, Sequence
 
 
 class CTFFlag(Flag):
@@ -26,22 +31,22 @@ class CTFFlag(Flag):
 
     def __init__(self, team: Team):
         assert team.flagmaterial is not None
-        super().__init__(materials=[team.flagmaterial],
-                         position=team.base_pos,
-                         color=team.color)
+        super().__init__(
+            materials=[team.flagmaterial],
+            position=team.base_pos,
+            color=team.color,
+        )
         self._team = team
         self.held_count = 0
-        self.counter = ba.newnode('text',
-                                  owner=self.node,
-                                  attrs={
-                                      'in_world': True,
-                                      'scale': 0.02,
-                                      'h_align': 'center'
-                                  })
+        self.counter = ba.newnode(
+            'text',
+            owner=self.node,
+            attrs={'in_world': True, 'scale': 0.02, 'h_align': 'center'},
+        )
         self.reset_return_times()
-        self.last_player_to_hold: Optional[Player] = None
-        self.time_out_respawn_time: Optional[int] = None
-        self.touch_return_time: Optional[float] = None
+        self.last_player_to_hold: Player | None = None
+        self.time_out_respawn_time: int | None = None
+        self.touch_return_time: float | None = None
 
     def reset_return_times(self) -> None:
         """Clear flag related times in the activity."""
@@ -64,11 +69,15 @@ class Player(ba.Player['Team']):
 class Team(ba.Team[Player]):
     """Our team type for this game."""
 
-    def __init__(self, base_pos: Sequence[float],
-                 base_region_material: ba.Material, base_region: ba.Node,
-                 spaz_material_no_flag_physical: ba.Material,
-                 spaz_material_no_flag_collide: ba.Material,
-                 flagmaterial: ba.Material):
+    def __init__(
+        self,
+        base_pos: Sequence[float],
+        base_region_material: ba.Material,
+        base_region: ba.Node,
+        spaz_material_no_flag_physical: ba.Material,
+        spaz_material_no_flag_collide: ba.Material,
+        flagmaterial: ba.Material,
+    ):
         self.base_pos = base_pos
         self.base_region_material = base_region_material
         self.base_region = base_region
@@ -78,11 +87,11 @@ class Team(ba.Team[Player]):
         self.score = 0
         self.flag_return_touches = 0
         self.home_flag_at_base = True
-        self.touch_return_timer: Optional[ba.Timer] = None
+        self.touch_return_timer: ba.Timer | None = None
         self.enemy_flag_at_base = False
-        self.flag: Optional[CTFFlag] = None
-        self.last_flag_leave_time: Optional[float] = None
-        self.touch_return_timer_ticking: Optional[ba.NodeActor] = None
+        self.flag: CTFFlag | None = None
+        self.last_flag_leave_time: float | None = None
+        self.touch_return_timer_ticking: ba.NodeActor | None = None
 
 
 # ba_meta export game
@@ -158,15 +167,16 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
 
         # Base class overrides.
         self.slow_motion = self._epic_mode
-        self.default_music = (ba.MusicType.EPIC if self._epic_mode else
-                              ba.MusicType.FLAG_CATCHER)
+        self.default_music = (
+            ba.MusicType.EPIC if self._epic_mode else ba.MusicType.FLAG_CATCHER
+        )
 
-    def get_instance_description(self) -> Union[str, Sequence]:
+    def get_instance_description(self) -> str | Sequence:
         if self._score_to_win == 1:
             return 'Steal the enemy flag.'
         return 'Steal the enemy flag ${ARG1} times.', self._score_to_win
 
-    def get_instance_description_short(self) -> Union[str, Sequence]:
+    def get_instance_description_short(self) -> str | Sequence:
         if self._score_to_win == 1:
             return 'return 1 flag'
         return 'return ${ARG1} flags', self._score_to_win
@@ -178,15 +188,17 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
         base_pos = self.map.get_flag_position(sessionteam.id)
         Flag.project_stand(base_pos)
 
-        ba.newnode('light',
-                   attrs={
-                       'position': base_pos,
-                       'intensity': 0.6,
-                       'height_attenuated': False,
-                       'volume_intensity_scale': 0.1,
-                       'radius': 0.1,
-                       'color': sessionteam.color
-                   })
+        ba.newnode(
+            'light',
+            attrs={
+                'position': base_pos,
+                'intensity': 0.6,
+                'height_attenuated': False,
+                'volume_intensity_scale': 0.1,
+                'radius': 0.1,
+                'color': sessionteam.color,
+            },
+        )
 
         base_region_mat = ba.Material()
         pos = base_pos
@@ -196,19 +208,22 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
                 'position': (pos[0], pos[1] + 0.75, pos[2]),
                 'scale': (0.5, 0.5, 0.5),
                 'type': 'sphere',
-                'materials': [base_region_mat, self._all_bases_material]
-            })
+                'materials': [base_region_mat, self._all_bases_material],
+            },
+        )
 
         spaz_mat_no_flag_physical = ba.Material()
         spaz_mat_no_flag_collide = ba.Material()
         flagmat = ba.Material()
 
-        team = Team(base_pos=base_pos,
-                    base_region_material=base_region_mat,
-                    base_region=base_region,
-                    spaz_material_no_flag_physical=spaz_mat_no_flag_physical,
-                    spaz_material_no_flag_collide=spaz_mat_no_flag_collide,
-                    flagmaterial=flagmat)
+        team = Team(
+            base_pos=base_pos,
+            base_region_material=base_region_mat,
+            base_region=base_region,
+            spaz_material_no_flag_physical=spaz_mat_no_flag_physical,
+            spaz_material_no_flag_collide=spaz_mat_no_flag_collide,
+            flagmaterial=flagmat,
+        )
 
         # Some parts of our spazzes don't collide physically with our
         # flags but generate callbacks.
@@ -216,11 +231,18 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
             conditions=('they_have_material', flagmat),
             actions=(
                 ('modify_part_collision', 'physical', False),
-                ('call', 'at_connect',
-                 lambda: self._handle_touching_own_flag(team, True)),
-                ('call', 'at_disconnect',
-                 lambda: self._handle_touching_own_flag(team, False)),
-            ))
+                (
+                    'call',
+                    'at_connect',
+                    lambda: self._handle_touching_own_flag(team, True),
+                ),
+                (
+                    'call',
+                    'at_disconnect',
+                    lambda: self._handle_touching_own_flag(team, False),
+                ),
+            ),
+        )
 
         # Other parts of our spazzes don't collide with our flags at all.
         spaz_mat_no_flag_collide.add_actions(
@@ -234,11 +256,18 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
             actions=(
                 ('modify_part_collision', 'collide', True),
                 ('modify_part_collision', 'physical', False),
-                ('call', 'at_connect',
-                 lambda: self._handle_flag_entered_base(team)),
-                ('call', 'at_disconnect',
-                 lambda: self._handle_flag_left_base(team)),
-            ))
+                (
+                    'call',
+                    'at_connect',
+                    lambda: self._handle_flag_entered_base(team),
+                ),
+                (
+                    'call',
+                    'at_disconnect',
+                    lambda: self._handle_flag_left_base(team),
+                ),
+            ),
+        )
 
         return team
 
@@ -274,6 +303,14 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
 
             # If the enemy flag is already here, score!
             if team.enemy_flag_at_base:
+                # And show team name which scored (but actually we could
+                # show here player who returned enemy flag).
+                self.show_zoom_message(
+                    ba.Lstr(
+                        resource='nameScoresText', subs=[('${NAME}', team.name)]
+                    ),
+                    color=team.color,
+                )
                 self._score(team)
         else:
             team.enemy_flag_at_base = True
@@ -303,15 +340,13 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
                             'scale': 0.013,
                             'color': (1, 1, 0, 1),
                             'h_align': 'center',
-                            'position': (bpos[0], bpos[1] + 3.2, bpos[2])
-                        })
+                            'position': (bpos[0], bpos[1] + 3.2, bpos[2]),
+                        },
+                    )
                     ba.timer(5.1, tnode.delete)
-                    ba.animate(tnode, 'scale', {
-                        0.0: 0,
-                        0.2: 0.013,
-                        4.8: 0.013,
-                        5.0: 0
-                    })
+                    ba.animate(
+                        tnode, 'scale', {0.0: 0, 0.2: 0.013, 4.8: 0.013, 5.0: 0}
+                    )
 
     def _tick(self) -> None:
         # If either flag is away from base and not being held, tick down its
@@ -339,10 +374,15 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
                 # to show its auto-return counter.  (if there's self-touches
                 # its showing that time).
                 if team.flag_return_touches == 0:
-                    flag.counter.text = (str(flag.time_out_respawn_time) if (
-                        time_out_counting_down
-                        and flag.time_out_respawn_time is not None
-                        and flag.time_out_respawn_time <= 10) else '')
+                    flag.counter.text = (
+                        str(flag.time_out_respawn_time)
+                        if (
+                            time_out_counting_down
+                            and flag.time_out_respawn_time is not None
+                            and flag.time_out_respawn_time <= 10
+                        )
+                        else ''
+                    )
                     flag.counter.color = (1, 1, 1, 0.5)
                     flag.counter.scale = 0.014
 
@@ -384,8 +424,10 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
         if flag.team is team:
 
             # Check times here to prevent too much flashing.
-            if (team.last_flag_leave_time is None
-                    or cur_time - team.last_flag_leave_time > 3.0):
+            if (
+                team.last_flag_leave_time is None
+                or cur_time - team.last_flag_leave_time > 3.0
+            ):
                 ba.playsound(self._alarmsound, position=team.base_pos)
                 self._flash_base(team)
             team.last_flag_leave_time = cur_time
@@ -401,12 +443,15 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
             return  # No need to return when its at home.
         if team.touch_return_timer_ticking is None:
             team.touch_return_timer_ticking = ba.NodeActor(
-                ba.newnode('sound',
-                           attrs={
-                               'sound': self._ticking_sound,
-                               'positional': False,
-                               'loop': True
-                           }))
+                ba.newnode(
+                    'sound',
+                    attrs={
+                        'sound': self._ticking_sound,
+                        'positional': False,
+                        'loop': True,
+                    },
+                )
+            )
         flag = team.flag
         if flag.touch_return_time is not None:
             flag.touch_return_time -= 0.1
@@ -423,9 +468,9 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
         for player in team.players:
             if player.touching_own_flag > 0:
                 return_score = 10 + 5 * int(self.flag_touch_return_time)
-                self.stats.player_scored(player,
-                                         return_score,
-                                         screenmessage=False)
+                self.stats.player_scored(
+                    player, return_score, screenmessage=False
+                )
 
     def _handle_touching_own_flag(self, team: Team, connecting: bool) -> None:
         """Called when a player touches or stops touching their own team flag.
@@ -433,23 +478,29 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
         We keep track of when each player is touching their own flag so we
         can award points when returned.
         """
-        player: Optional[Player]
+        player: Player | None
         try:
-            player = ba.getcollision().sourcenode.getdelegate(
-                PlayerSpaz, True).getplayer(Player, True)
+            spaz = ba.getcollision().sourcenode.getdelegate(PlayerSpaz, True)
         except ba.NotFoundError:
-            # This can happen if the player leaves but his corpse touches/etc.
-            player = None
+            return
+
+        if not spaz.is_alive():
+            return
+
+        player = spaz.getplayer(Player, True)
 
         if player:
-            player.touching_own_flag += (1 if connecting else -1)
+            player.touching_own_flag += 1 if connecting else -1
 
         # If return-time is zero, just kill it immediately.. otherwise keep
         # track of touches and count down.
         if float(self.flag_touch_return_time) <= 0.0:
             assert team.flag is not None
-            if (connecting and not team.home_flag_at_base
-                    and team.flag.held_count == 0):
+            if (
+                connecting
+                and not team.home_flag_at_base
+                and team.flag.held_count == 0
+            ):
                 self._award_players_touching_own_flag(team)
                 ba.getcollision().opposingnode.handlemessage(ba.DieMessage())
 
@@ -461,7 +512,8 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
                     team.touch_return_timer = ba.Timer(
                         0.1,
                         call=ba.Call(self._touch_return_update, team),
-                        repeat=True)
+                        repeat=True,
+                    )
                     team.touch_return_timer_ticking = None
             else:
                 team.flag_return_touches -= 1
@@ -472,20 +524,24 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
                 ba.print_error('CTF flag_return_touches < 0')
 
     def _flash_base(self, team: Team, length: float = 2.0) -> None:
-        light = ba.newnode('light',
-                           attrs={
-                               'position': team.base_pos,
-                               'height_attenuated': False,
-                               'radius': 0.3,
-                               'color': team.color
-                           })
+        light = ba.newnode(
+            'light',
+            attrs={
+                'position': team.base_pos,
+                'height_attenuated': False,
+                'radius': 0.3,
+                'color': team.color,
+            },
+        )
         ba.animate(light, 'intensity', {0.0: 0, 0.25: 2.0, 0.5: 0}, loop=True)
         ba.timer(length, light.delete)
 
-    def spawn_player_spaz(self,
-                          player: Player,
-                          position: Sequence[float] = None,
-                          angle: float = None) -> PlayerSpaz:
+    def spawn_player_spaz(
+        self,
+        player: Player,
+        position: Sequence[float] | None = None,
+        angle: float | None = None,
+    ) -> PlayerSpaz:
         """Intercept new spazzes and add our team material for them."""
         spaz = super().spawn_player_spaz(player, position, angle)
         player = spaz.getplayer(Player, True)
@@ -502,22 +558,27 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
         # (so we can calc restores).
         assert spaz.node
         spaz.node.materials = list(spaz.node.materials) + no_physical_mats
-        spaz.node.roller_materials = list(
-            spaz.node.roller_materials) + no_physical_mats
+        spaz.node.roller_materials = (
+            list(spaz.node.roller_materials) + no_physical_mats
+        )
 
         # Pickups and punches shouldn't hit at all though.
-        spaz.node.punch_materials = list(
-            spaz.node.punch_materials) + no_collide_mats
-        spaz.node.pickup_materials = list(
-            spaz.node.pickup_materials) + no_collide_mats
-        spaz.node.extras_material = list(
-            spaz.node.extras_material) + no_collide_mats
+        spaz.node.punch_materials = (
+            list(spaz.node.punch_materials) + no_collide_mats
+        )
+        spaz.node.pickup_materials = (
+            list(spaz.node.pickup_materials) + no_collide_mats
+        )
+        spaz.node.extras_material = (
+            list(spaz.node.extras_material) + no_collide_mats
+        )
         return spaz
 
     def _update_scoreboard(self) -> None:
         for team in self.teams:
-            self._scoreboard.set_team_value(team, team.score,
-                                            self._score_to_win)
+            self._scoreboard.set_team_value(
+                team, team.score, self._score_to_win
+            )
 
     def handlemessage(self, msg: Any) -> Any:
 
@@ -535,7 +596,8 @@ class CaptureTheFlagGame(ba.TeamGameActivity[Player, Team]):
             assert isinstance(msg.flag, CTFFlag)
             try:
                 msg.flag.last_player_to_hold = msg.node.getdelegate(
-                    PlayerSpaz, True).getplayer(Player, True)
+                    PlayerSpaz, True
+                ).getplayer(Player, True)
             except ba.NotFoundError:
                 pass
 

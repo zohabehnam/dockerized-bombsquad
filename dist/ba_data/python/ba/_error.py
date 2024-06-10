@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class DependencyError(Exception):
     """Exception raised when one or more ba.Dependency items are missing.
 
-    category: Exception Classes
+    Category: **Exception Classes**
 
     (this will generally be missing assets).
     """
@@ -34,7 +34,7 @@ class DependencyError(Exception):
 class ContextError(Exception):
     """Exception raised when a call is made in an invalid context.
 
-    category: Exception Classes
+    Category: **Exception Classes**
 
     Examples of this include calling UI functions within an Activity context
     or calling scene manipulation functions outside of a game context.
@@ -44,91 +44,96 @@ class ContextError(Exception):
 class NotFoundError(Exception):
     """Exception raised when a referenced object does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class PlayerNotFoundError(NotFoundError):
     """Exception raised when an expected ba.Player does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class SessionPlayerNotFoundError(NotFoundError):
     """Exception raised when an expected ba.SessionPlayer does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class TeamNotFoundError(NotFoundError):
     """Exception raised when an expected ba.Team does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class DelegateNotFoundError(NotFoundError):
     """Exception raised when an expected delegate object does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class SessionTeamNotFoundError(NotFoundError):
     """Exception raised when an expected ba.SessionTeam does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class NodeNotFoundError(NotFoundError):
     """Exception raised when an expected ba.Node does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class ActorNotFoundError(NotFoundError):
     """Exception raised when an expected ba.Actor does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class ActivityNotFoundError(NotFoundError):
     """Exception raised when an expected ba.Activity does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class SessionNotFoundError(NotFoundError):
     """Exception raised when an expected ba.Session does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class InputDeviceNotFoundError(NotFoundError):
     """Exception raised when an expected ba.InputDevice does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
 
 
 class WidgetNotFoundError(NotFoundError):
     """Exception raised when an expected ba.Widget does not exist.
 
-    category: Exception Classes
+    Category: **Exception Classes**
     """
+
+
+# TODO: Should integrate some sort of context printing into our
+# log handling so we can just use logging.exception() and kill these
+# two functions.
 
 
 def print_exception(*args: Any, **keywds: Any) -> None:
     """Print info about an exception along with pertinent context state.
 
-    category: General Utility Functions
+    Category: **General Utility Functions**
 
     Prints all arguments provided along with various info about the
     current context and the outstanding exception.
@@ -136,6 +141,7 @@ def print_exception(*args: Any, **keywds: Any) -> None:
     one time from an exact calling location.
     """
     import traceback
+
     if keywds:
         allowed_keywds = ['once']
         if any(keywd not in allowed_keywds for keywd in keywds):
@@ -168,7 +174,7 @@ def print_exception(*args: Any, **keywds: Any) -> None:
 def print_error(err_str: str, once: bool = False) -> None:
     """Print info about an error along with pertinent context state.
 
-    category: General Utility Functions
+    Category: **General Utility Functions**
 
     Prints all positional arguments provided along with various info about the
     current context.
@@ -176,6 +182,7 @@ def print_error(err_str: str, once: bool = False) -> None:
     one time from an exact calling location.
     """
     import traceback
+
     try:
         # If we're only printing once and already have, bail.
         if once:

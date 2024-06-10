@@ -8,16 +8,21 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeVar, Generic, cast
 
 import _ba
-from ba._error import (SessionPlayerNotFoundError, print_exception,
-                       ActorNotFoundError)
+from ba._error import (
+    SessionPlayerNotFoundError,
+    print_exception,
+    ActorNotFoundError,
+)
 from ba._messages import DeathType, DieMessage
 
 if TYPE_CHECKING:
-    from typing import Optional, Sequence, Any, Union, Callable
+    from typing import Sequence, Any, Callable
     import ba
 
+# pylint: disable=invalid-name
 PlayerType = TypeVar('PlayerType', bound='ba.Player')
 TeamType = TypeVar('TeamType', bound='ba.Team')
+# pylint: enable=invalid-name
 
 
 @dataclass
@@ -26,6 +31,7 @@ class PlayerInfo:
 
     Category: Gameplay Classes
     """
+
     name: str
     character: str
 
@@ -36,8 +42,9 @@ class StandLocation:
 
     Category: Gameplay Classes
     """
+
     position: ba.Vec3
-    angle: Optional[float] = None
+    angle: float | None = None
 
 
 class Player(Generic[TeamType]):
@@ -48,24 +55,21 @@ class Player(Generic[TeamType]):
     These correspond to ba.SessionPlayer objects, but are associated with a
     single ba.Activity instance. This allows activities to specify their
     own custom ba.Player types.
-
-    Attributes:
-
-      actor
-        The ba.Actor associated with the player.
-
     """
 
     # These are instance attrs but we define them at the type level so
     # their type annotations are introspectable (for docs generation).
     character: str
-    actor: Optional[ba.Actor]
+
+    actor: ba.Actor | None
+    """The ba.Actor associated with the player."""
+
     color: Sequence[float]
     highlight: Sequence[float]
 
     _team: TeamType
     _sessionplayer: ba.SessionPlayer
-    _nodeactor: Optional[ba.NodeActor]
+    _nodeactor: ba.NodeActor | None
     _expired: bool
     _postinited: bool
     _customdata: dict
@@ -91,11 +95,12 @@ class Player(Generic[TeamType]):
                 f' operator (__eq__) which will break internal'
                 f' logic. Please remove it.\n'
                 f'For dataclasses you can do "dataclass(eq=False)"'
-                f' in the class decorator.')
+                f' in the class decorator.'
+            )
 
         self.actor = None
         self.character = ''
-        self._nodeactor: Optional[ba.NodeActor] = None
+        self._nodeactor: ba.NodeActor | None = None
         self._sessionplayer = sessionplayer
         self.character = sessionplayer.character
         self.color = sessionplayer.color
@@ -225,8 +230,7 @@ class Player(Generic[TeamType]):
         return self._sessionplayer.exists() and not self._expired
 
     def getname(self, full: bool = False, icon: bool = True) -> str:
-        """getname(full: bool = False, icon: bool = True) -> str
-
+        """
         Returns the player's name. If icon is True, the long version of the
         name may include an icon.
         """
@@ -235,8 +239,7 @@ class Player(Generic[TeamType]):
         return self._sessionplayer.getname(full=full, icon=icon)
 
     def is_alive(self) -> bool:
-        """is_alive() -> bool
-
+        """
         Returns True if the player has a ba.Actor assigned and its
         is_alive() method return True. False is returned otherwise.
         """
@@ -245,20 +248,17 @@ class Player(Generic[TeamType]):
         return self.actor is not None and self.actor.is_alive()
 
     def get_icon(self) -> dict[str, Any]:
-        """get_icon() -> dict[str, Any]
-
+        """
         Returns the character's icon (images, colors, etc contained in a dict)
         """
         assert self._postinited
         assert not self._expired
         return self._sessionplayer.get_icon()
 
-    def assigninput(self, inputtype: Union[ba.InputType, tuple[ba.InputType,
-                                                               ...]],
-                    call: Callable) -> None:
-        """assigninput(type: Union[ba.InputType, Tuple[ba.InputType, ...]],
-          call: Callable) -> None
-
+    def assigninput(
+        self, inputtype: ba.InputType | tuple[ba.InputType, ...], call: Callable
+    ) -> None:
+        """
         Set the python callable to be run for one or more types of input.
         """
         assert self._postinited
@@ -266,8 +266,7 @@ class Player(Generic[TeamType]):
         return self._sessionplayer.assigninput(type=inputtype, call=call)
 
     def resetinput(self) -> None:
-        """resetinput() -> None
-
+        """
         Clears out the player's assigned input actions.
         """
         assert self._postinited
@@ -319,8 +318,9 @@ def playercast(totype: type[PlayerType], player: ba.Player) -> PlayerType:
 # NOTE: ideally we should have a single playercast() call and use overloads
 # for the optional variety, but that currently seems to not be working.
 # See: https://github.com/python/mypy/issues/8800
-def playercast_o(totype: type[PlayerType],
-                 player: Optional[ba.Player]) -> Optional[PlayerType]:
+def playercast_o(
+    totype: type[PlayerType], player: ba.Player | None
+) -> PlayerType | None:
     """A variant of ba.playercast() for use with optional ba.Player values.
 
     Category: Gameplay Functions

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, overload
 import ba
 
 if TYPE_CHECKING:
-    from typing import Optional, Union, Any, Literal
+    from typing import Any, Literal
 
 
 class OnScreenTimer(ba.Actor):
@@ -21,24 +21,24 @@ class OnScreenTimer(ba.Actor):
 
     def __init__(self) -> None:
         super().__init__()
-        self._starttime_ms: Optional[int] = None
-        self.node = ba.newnode('text',
-                               attrs={
-                                   'v_attach': 'top',
-                                   'h_attach': 'center',
-                                   'h_align': 'center',
-                                   'color': (1, 1, 0.5, 1),
-                                   'flatness': 0.5,
-                                   'shadow': 0.5,
-                                   'position': (0, -70),
-                                   'scale': 1.4,
-                                   'text': ''
-                               })
-        self.inputnode = ba.newnode('timedisplay',
-                                    attrs={
-                                        'timemin': 0,
-                                        'showsubseconds': True
-                                    })
+        self._starttime_ms: int | None = None
+        self.node = ba.newnode(
+            'text',
+            attrs={
+                'v_attach': 'top',
+                'h_attach': 'center',
+                'h_align': 'center',
+                'color': (1, 1, 0.5, 1),
+                'flatness': 0.5,
+                'shadow': 0.5,
+                'position': (0, -70),
+                'scale': 1.4,
+                'text': '',
+            },
+        )
+        self.inputnode = ba.newnode(
+            'timedisplay', attrs={'timemin': 0, 'showsubseconds': True}
+        )
         self.inputnode.connectattr('output', self.node, 'text')
 
     def start(self) -> None:
@@ -47,16 +47,19 @@ class OnScreenTimer(ba.Actor):
         assert isinstance(tval, int)
         self._starttime_ms = tval
         self.inputnode.time1 = self._starttime_ms
-        ba.getactivity().globalsnode.connectattr('time', self.inputnode,
-                                                 'time2')
+        ba.getactivity().globalsnode.connectattr(
+            'time', self.inputnode, 'time2'
+        )
 
     def has_started(self) -> bool:
         """Return whether this timer has started yet."""
         return self._starttime_ms is not None
 
-    def stop(self,
-             endtime: Union[int, float] = None,
-             timeformat: ba.TimeFormat = ba.TimeFormat.SECONDS) -> None:
+    def stop(
+        self,
+        endtime: int | float | None = None,
+        timeformat: ba.TimeFormat = ba.TimeFormat.SECONDS,
+    ) -> None:
         """End the timer.
 
         If 'endtime' is not None, it is used when calculating
@@ -85,20 +88,19 @@ class OnScreenTimer(ba.Actor):
     # Overloads so type checker knows our exact return type based in args.
     @overload
     def getstarttime(
-        self,
-        timeformat: Literal[ba.TimeFormat.SECONDS] = ba.TimeFormat.SECONDS
+        self, timeformat: Literal[ba.TimeFormat.SECONDS] = ba.TimeFormat.SECONDS
     ) -> float:
         ...
 
     @overload
-    def getstarttime(self,
-                     timeformat: Literal[ba.TimeFormat.MILLISECONDS]) -> int:
+    def getstarttime(
+        self, timeformat: Literal[ba.TimeFormat.MILLISECONDS]
+    ) -> int:
         ...
 
     def getstarttime(
-        self,
-        timeformat: ba.TimeFormat = ba.TimeFormat.SECONDS
-    ) -> Union[int, float]:
+        self, timeformat: ba.TimeFormat = ba.TimeFormat.SECONDS
+    ) -> int | float:
         """Return the sim-time when start() was called.
 
         Time will be returned in seconds if timeformat is SECONDS or

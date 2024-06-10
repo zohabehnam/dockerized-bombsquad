@@ -2,7 +2,7 @@
 #
 """Implements football games (both co-op and teams varieties)."""
 
-# ba_meta require api 6
+# ba_meta require api 7
 # (see https://ballistica.net/wiki/meta-tag-system)
 
 from __future__ import annotations
@@ -17,16 +17,31 @@ from bastd.actor.playerspaz import PlayerSpaz
 from bastd.actor.scoreboard import Scoreboard
 from bastd.actor.respawnicon import RespawnIcon
 from bastd.actor.powerupbox import PowerupBoxFactory, PowerupBox
-from bastd.actor.flag import (FlagFactory, Flag, FlagPickedUpMessage,
-                              FlagDroppedMessage, FlagDiedMessage)
-from bastd.actor.spazbot import (SpazBotDiedMessage, SpazBotPunchedMessage,
-                                 SpazBotSet, BrawlerBotLite, BrawlerBot,
-                                 BomberBotLite, BomberBot, TriggerBot,
-                                 ChargerBot, TriggerBotPro, BrawlerBotPro,
-                                 StickyBot, ExplodeyBot)
+from bastd.actor.flag import (
+    FlagFactory,
+    Flag,
+    FlagPickedUpMessage,
+    FlagDroppedMessage,
+    FlagDiedMessage,
+)
+from bastd.actor.spazbot import (
+    SpazBotDiedMessage,
+    SpazBotPunchedMessage,
+    SpazBotSet,
+    BrawlerBotLite,
+    BrawlerBot,
+    BomberBotLite,
+    BomberBot,
+    TriggerBot,
+    ChargerBot,
+    TriggerBotPro,
+    BrawlerBotPro,
+    StickyBot,
+    ExplodeyBot,
+)
 
 if TYPE_CHECKING:
-    from typing import Any, Sequence, Optional, Union
+    from typing import Any, Sequence
     from bastd.actor.spaz import Spaz
     from bastd.actor.spazbot import SpazBot
 
@@ -35,23 +50,25 @@ class FootballFlag(Flag):
     """Custom flag class for football games."""
 
     def __init__(self, position: Sequence[float]):
-        super().__init__(position=position,
-                         dropped_timeout=20,
-                         color=(1.0, 1.0, 0.3))
+        super().__init__(
+            position=position, dropped_timeout=20, color=(1.0, 1.0, 0.3)
+        )
         assert self.node
-        self.last_holding_player: Optional[ba.Player] = None
+        self.last_holding_player: ba.Player | None = None
         self.node.is_area_of_interest = True
-        self.respawn_timer: Optional[ba.Timer] = None
+        self.respawn_timer: ba.Timer | None = None
         self.scored = False
         self.held_count = 0
-        self.light = ba.newnode('light',
-                                owner=self.node,
-                                attrs={
-                                    'intensity': 0.25,
-                                    'height_attenuated': False,
-                                    'radius': 0.2,
-                                    'color': (0.9, 0.7, 0.0)
-                                })
+        self.light = ba.newnode(
+            'light',
+            owner=self.node,
+            attrs={
+                'intensity': 0.25,
+                'height_attenuated': False,
+                'radius': 0.2,
+                'color': (0.9, 0.7, 0.0),
+            },
+        )
         self.node.connectattr('position', self.light, 'position')
 
 
@@ -59,8 +76,8 @@ class Player(ba.Player['Team']):
     """Our player type for this game."""
 
     def __init__(self) -> None:
-        self.respawn_timer: Optional[ba.Timer] = None
-        self.respawn_icon: Optional[RespawnIcon] = None
+        self.respawn_timer: ba.Timer | None = None
+        self.respawn_icon: RespawnIcon | None = None
 
 
 class Team(ba.Team[Player]):
@@ -106,8 +123,8 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
             ],
             default=1.0,
         ),
+        ba.BoolSetting('Epic Mode', default=False),
     ]
-    default_music = ba.MusicType.FOOTBALL
 
     @classmethod
     def supports_session_type(cls, sessiontype: type[ba.Session]) -> bool:
@@ -120,7 +137,7 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
 
     def __init__(self, settings: dict):
         super().__init__(settings)
-        self._scoreboard: Optional[Scoreboard] = Scoreboard()
+        self._scoreboard: Scoreboard | None = Scoreboard()
 
         # Load some media we need.
         self._cheer_sound = ba.getsound('cheer')
@@ -135,16 +152,22 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
                 ('modify_part_collision', 'collide', True),
                 ('modify_part_collision', 'physical', False),
                 ('call', 'at_connect', self._handle_score),
-            ))
-        self._flag_spawn_pos: Optional[Sequence[float]] = None
+            ),
+        )
+        self._flag_spawn_pos: Sequence[float] | None = None
         self._score_regions: list[ba.NodeActor] = []
-        self._flag: Optional[FootballFlag] = None
-        self._flag_respawn_timer: Optional[ba.Timer] = None
-        self._flag_respawn_light: Optional[ba.NodeActor] = None
+        self._flag: FootballFlag | None = None
+        self._flag_respawn_timer: ba.Timer | None = None
+        self._flag_respawn_light: ba.NodeActor | None = None
         self._score_to_win = int(settings['Score to Win'])
         self._time_limit = float(settings['Time Limit'])
+        self._epic_mode = bool(settings['Epic Mode'])
+        self.slow_motion = self._epic_mode
+        self.default_music = (
+            ba.MusicType.EPIC if self._epic_mode else ba.MusicType.FOOTBALL
+        )
 
-    def get_instance_description(self) -> Union[str, Sequence]:
+    def get_instance_description(self) -> str | Sequence:
         touchdowns = self._score_to_win / 7
 
         # NOTE: if use just touchdowns = self._score_to_win // 7
@@ -155,7 +178,7 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
             return 'Score ${ARG1} touchdowns.', touchdowns
         return 'Score a touchdown.'
 
-    def get_instance_description_short(self) -> Union[str, Sequence]:
+    def get_instance_description_short(self) -> str | Sequence:
         touchdowns = self._score_to_win / 7
         touchdowns = math.ceil(touchdowns)
         if touchdowns > 1:
@@ -166,27 +189,35 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
         super().on_begin()
         self.setup_standard_time_limit(self._time_limit)
         self.setup_standard_powerup_drops()
-        self._flag_spawn_pos = (self.map.get_flag_position(None))
+        self._flag_spawn_pos = self.map.get_flag_position(None)
         self._spawn_flag()
         defs = self.map.defs
         self._score_regions.append(
             ba.NodeActor(
-                ba.newnode('region',
-                           attrs={
-                               'position': defs.boxes['goal1'][0:3],
-                               'scale': defs.boxes['goal1'][6:9],
-                               'type': 'box',
-                               'materials': (self._score_region_material, )
-                           })))
+                ba.newnode(
+                    'region',
+                    attrs={
+                        'position': defs.boxes['goal1'][0:3],
+                        'scale': defs.boxes['goal1'][6:9],
+                        'type': 'box',
+                        'materials': (self._score_region_material,),
+                    },
+                )
+            )
+        )
         self._score_regions.append(
             ba.NodeActor(
-                ba.newnode('region',
-                           attrs={
-                               'position': defs.boxes['goal2'][0:3],
-                               'scale': defs.boxes['goal2'][6:9],
-                               'type': 'box',
-                               'materials': (self._score_region_material, )
-                           })))
+                ba.newnode(
+                    'region',
+                    attrs={
+                        'position': defs.boxes['goal2'][0:3],
+                        'scale': defs.boxes['goal2'][6:9],
+                        'type': 'box',
+                        'materials': (self._score_region_material,),
+                    },
+                )
+            )
+        )
         self._update_scoreboard()
         ba.playsound(self._chant_sound)
 
@@ -221,11 +252,13 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
                 # If someone on this team was last to touch it,
                 # give them points.
                 assert self._flag is not None
-                if (self._flag.last_holding_player
-                        and team == self._flag.last_holding_player.team):
-                    self.stats.player_scored(self._flag.last_holding_player,
-                                             50,
-                                             big_message=True)
+                if (
+                    self._flag.last_holding_player
+                    and team == self._flag.last_holding_player.team
+                ):
+                    self.stats.player_scored(
+                        self._flag.last_holding_player, 50, big_message=True
+                    )
                 # End the game if we won.
                 if team.score >= self._score_to_win:
                     self.end_game()
@@ -236,12 +269,14 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
 
         # Kill the flag (it'll respawn shortly).
         ba.timer(1.0, self._kill_flag)
-        light = ba.newnode('light',
-                           attrs={
-                               'position': ba.getcollision().position,
-                               'height_attenuated': False,
-                               'color': (1, 0, 0)
-                           })
+        light = ba.newnode(
+            'light',
+            attrs={
+                'position': ba.getcollision().position,
+                'height_attenuated': False,
+                'color': (1, 0, 0),
+            },
+        )
         ba.animate(light, 'intensity', {0.0: 0, 0.5: 1, 1.0: 0}, loop=True)
         ba.timer(1.0, light.delete)
         ba.cameraflash(duration=10.0)
@@ -256,15 +291,17 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
     def _update_scoreboard(self) -> None:
         assert self._scoreboard is not None
         for team in self.teams:
-            self._scoreboard.set_team_value(team, team.score,
-                                            self._score_to_win)
+            self._scoreboard.set_team_value(
+                team, team.score, self._score_to_win
+            )
 
     def handlemessage(self, msg: Any) -> Any:
         if isinstance(msg, FlagPickedUpMessage):
             assert isinstance(msg.flag, FootballFlag)
             try:
                 msg.flag.last_holding_player = msg.node.getdelegate(
-                    PlayerSpaz, True).getplayer(Player, True)
+                    PlayerSpaz, True
+                ).getplayer(Player, True)
             except ba.NotFoundError:
                 pass
             msg.flag.held_count += 1
@@ -284,21 +321,23 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
             if not self.has_ended():
                 self._flag_respawn_timer = ba.Timer(3.0, self._spawn_flag)
                 self._flag_respawn_light = ba.NodeActor(
-                    ba.newnode('light',
-                               attrs={
-                                   'position': self._flag_spawn_pos,
-                                   'height_attenuated': False,
-                                   'radius': 0.15,
-                                   'color': (1.0, 1.0, 0.3)
-                               }))
+                    ba.newnode(
+                        'light',
+                        attrs={
+                            'position': self._flag_spawn_pos,
+                            'height_attenuated': False,
+                            'radius': 0.15,
+                            'color': (1.0, 1.0, 0.3),
+                        },
+                    )
+                )
                 assert self._flag_respawn_light.node
-                ba.animate(self._flag_respawn_light.node,
-                           'intensity', {
-                               0.0: 0,
-                               0.25: 0.15,
-                               0.5: 0
-                           },
-                           loop=True)
+                ba.animate(
+                    self._flag_respawn_light.node,
+                    'intensity',
+                    {0.0: 0, 0.25: 0.15, 0.5: 0},
+                    loop=True,
+                )
                 ba.timer(3.0, self._flag_respawn_light.node.delete)
 
         else:
@@ -306,12 +345,14 @@ class FootballTeamGame(ba.TeamGameActivity[Player, Team]):
             super().handlemessage(msg)
 
     def _flash_flag_spawn(self) -> None:
-        light = ba.newnode('light',
-                           attrs={
-                               'position': self._flag_spawn_pos,
-                               'height_attenuated': False,
-                               'color': (1, 1, 0)
-                           })
+        light = ba.newnode(
+            'light',
+            attrs={
+                'position': self._flag_spawn_pos,
+                'height_attenuated': False,
+                'color': (1, 1, 0),
+            },
+        )
         ba.animate(light, 'intensity', {0: 0, 0.25: 0.25, 0.5: 0}, loop=True)
         ba.timer(1.0, light.delete)
 
@@ -328,22 +369,24 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
 
     name = 'Football'
     tips = ['Use the pick-up button to grab the flag < ${PICKUP} >']
-    scoreconfig = ba.ScoreConfig(scoretype=ba.ScoreType.MILLISECONDS,
-                                 version='B')
+    scoreconfig = ba.ScoreConfig(
+        scoretype=ba.ScoreType.MILLISECONDS, version='B'
+    )
+
     default_music = ba.MusicType.FOOTBALL
 
     # FIXME: Need to update co-op games to use getscoreconfig.
     def get_score_type(self) -> str:
         return 'time'
 
-    def get_instance_description(self) -> Union[str, Sequence]:
+    def get_instance_description(self) -> str | Sequence:
         touchdowns = self._score_to_win / 7
         touchdowns = math.ceil(touchdowns)
         if touchdowns > 1:
             return 'Score ${ARG1} touchdowns.', touchdowns
         return 'Score a touchdown.'
 
-    def get_instance_description_short(self) -> Union[str, Sequence]:
+    def get_instance_description_short(self) -> str | Sequence:
         touchdowns = self._score_to_win / 7
         touchdowns = math.ceil(touchdowns)
         if touchdowns > 1:
@@ -370,32 +413,33 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
                 ('modify_part_collision', 'collide', True),
                 ('modify_part_collision', 'physical', False),
                 ('call', 'at_connect', self._handle_score),
-            ))
+            ),
+        )
         self._powerup_center = (0, 2, 0)
         self._powerup_spread = (10, 5.5)
         self._player_has_dropped_bomb = False
         self._player_has_punched = False
-        self._scoreboard: Optional[Scoreboard] = None
-        self._flag_spawn_pos: Optional[Sequence[float]] = None
+        self._scoreboard: Scoreboard | None = None
+        self._flag_spawn_pos: Sequence[float] | None = None
         self._score_regions: list[ba.NodeActor] = []
         self._exclude_powerups: list[str] = []
         self._have_tnt = False
-        self._bot_types_initial: Optional[list[type[SpazBot]]] = None
-        self._bot_types_7: Optional[list[type[SpazBot]]] = None
-        self._bot_types_14: Optional[list[type[SpazBot]]] = None
-        self._bot_team: Optional[Team] = None
-        self._starttime_ms: Optional[int] = None
-        self._time_text: Optional[ba.NodeActor] = None
-        self._time_text_input: Optional[ba.NodeActor] = None
-        self._tntspawner: Optional[TNTSpawner] = None
+        self._bot_types_initial: list[type[SpazBot]] | None = None
+        self._bot_types_7: list[type[SpazBot]] | None = None
+        self._bot_types_14: list[type[SpazBot]] | None = None
+        self._bot_team: Team | None = None
+        self._starttime_ms: int | None = None
+        self._time_text: ba.NodeActor | None = None
+        self._time_text_input: ba.NodeActor | None = None
+        self._tntspawner: TNTSpawner | None = None
         self._bots = SpazBotSet()
-        self._bot_spawn_timer: Optional[ba.Timer] = None
-        self._powerup_drop_timer: Optional[ba.Timer] = None
-        self._scoring_team: Optional[Team] = None
-        self._final_time_ms: Optional[int] = None
-        self._time_text_timer: Optional[ba.Timer] = None
-        self._flag_respawn_light: Optional[ba.Actor] = None
-        self._flag: Optional[FootballFlag] = None
+        self._bot_spawn_timer: ba.Timer | None = None
+        self._powerup_drop_timer: ba.Timer | None = None
+        self._scoring_team: Team | None = None
+        self._final_time_ms: int | None = None
+        self._time_text_timer: ba.Timer | None = None
+        self._flag_respawn_light: ba.Actor | None = None
+        self._flag: FootballFlag | None = None
 
     def on_transition_in(self) -> None:
         super().on_transition_in()
@@ -407,34 +451,44 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         defs = self.map.defs
         self._score_regions.append(
             ba.NodeActor(
-                ba.newnode('region',
-                           attrs={
-                               'position': defs.boxes['goal1'][0:3],
-                               'scale': defs.boxes['goal1'][6:9],
-                               'type': 'box',
-                               'materials': [self._score_region_material]
-                           })))
+                ba.newnode(
+                    'region',
+                    attrs={
+                        'position': defs.boxes['goal1'][0:3],
+                        'scale': defs.boxes['goal1'][6:9],
+                        'type': 'box',
+                        'materials': [self._score_region_material],
+                    },
+                )
+            )
+        )
         self._score_regions.append(
             ba.NodeActor(
-                ba.newnode('region',
-                           attrs={
-                               'position': defs.boxes['goal2'][0:3],
-                               'scale': defs.boxes['goal2'][6:9],
-                               'type': 'box',
-                               'materials': [self._score_region_material]
-                           })))
+                ba.newnode(
+                    'region',
+                    attrs={
+                        'position': defs.boxes['goal2'][0:3],
+                        'scale': defs.boxes['goal2'][6:9],
+                        'type': 'box',
+                        'materials': [self._score_region_material],
+                    },
+                )
+            )
+        )
         ba.playsound(self._chant_sound)
 
     def on_begin(self) -> None:
         # FIXME: Split this up a bit.
         # pylint: disable=too-many-statements
         from bastd.actor import controlsguide
+
         super().on_begin()
 
         # Show controls help in kiosk mode.
         if ba.app.demo_mode or ba.app.arcade_mode:
-            controlsguide.ControlsGuide(delay=3.0, lifespan=10.0,
-                                        bright=True).autoretain()
+            controlsguide.ControlsGuide(
+                delay=3.0, lifespan=10.0, bright=True
+            ).autoretain()
         assert self.initialplayerinfos is not None
         abot: type[SpazBot]
         bbot: type[SpazBot]
@@ -442,50 +496,64 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         if self._preset in ['rookie', 'rookie_easy']:
             self._exclude_powerups = ['curse']
             self._have_tnt = False
-            abot = (BrawlerBotLite
-                    if self._preset == 'rookie_easy' else BrawlerBot)
+            abot = (
+                BrawlerBotLite if self._preset == 'rookie_easy' else BrawlerBot
+            )
             self._bot_types_initial = [abot] * len(self.initialplayerinfos)
-            bbot = (BomberBotLite
-                    if self._preset == 'rookie_easy' else BomberBot)
-            self._bot_types_7 = (
-                [bbot] * (1 if len(self.initialplayerinfos) < 3 else 2))
-            cbot = (BomberBot if self._preset == 'rookie_easy' else TriggerBot)
-            self._bot_types_14 = (
-                [cbot] * (1 if len(self.initialplayerinfos) < 3 else 2))
+            bbot = BomberBotLite if self._preset == 'rookie_easy' else BomberBot
+            self._bot_types_7 = [bbot] * (
+                1 if len(self.initialplayerinfos) < 3 else 2
+            )
+            cbot = BomberBot if self._preset == 'rookie_easy' else TriggerBot
+            self._bot_types_14 = [cbot] * (
+                1 if len(self.initialplayerinfos) < 3 else 2
+            )
         elif self._preset == 'tournament':
             self._exclude_powerups = []
             self._have_tnt = True
-            self._bot_types_initial = (
-                [BrawlerBot] * (1 if len(self.initialplayerinfos) < 2 else 2))
-            self._bot_types_7 = (
-                [TriggerBot] * (1 if len(self.initialplayerinfos) < 3 else 2))
-            self._bot_types_14 = (
-                [ChargerBot] * (1 if len(self.initialplayerinfos) < 4 else 2))
+            self._bot_types_initial = [BrawlerBot] * (
+                1 if len(self.initialplayerinfos) < 2 else 2
+            )
+            self._bot_types_7 = [TriggerBot] * (
+                1 if len(self.initialplayerinfos) < 3 else 2
+            )
+            self._bot_types_14 = [ChargerBot] * (
+                1 if len(self.initialplayerinfos) < 4 else 2
+            )
         elif self._preset in ['pro', 'pro_easy', 'tournament_pro']:
             self._exclude_powerups = ['curse']
             self._have_tnt = True
             self._bot_types_initial = [ChargerBot] * len(
-                self.initialplayerinfos)
-            abot = (BrawlerBot if self._preset == 'pro' else BrawlerBotLite)
+                self.initialplayerinfos
+            )
+            abot = BrawlerBot if self._preset == 'pro' else BrawlerBotLite
             typed_bot_list: list[type[SpazBot]] = []
             self._bot_types_7 = (
-                typed_bot_list + [abot] + [BomberBot] *
-                (1 if len(self.initialplayerinfos) < 3 else 2))
-            bbot = (TriggerBotPro if self._preset == 'pro' else TriggerBot)
-            self._bot_types_14 = (
-                [bbot] * (1 if len(self.initialplayerinfos) < 3 else 2))
+                typed_bot_list
+                + [abot]
+                + [BomberBot] * (1 if len(self.initialplayerinfos) < 3 else 2)
+            )
+            bbot = TriggerBotPro if self._preset == 'pro' else TriggerBot
+            self._bot_types_14 = [bbot] * (
+                1 if len(self.initialplayerinfos) < 3 else 2
+            )
         elif self._preset in ['uber', 'uber_easy']:
             self._exclude_powerups = []
             self._have_tnt = True
-            abot = (BrawlerBotPro if self._preset == 'uber' else BrawlerBot)
-            bbot = (TriggerBotPro if self._preset == 'uber' else TriggerBot)
+            abot = BrawlerBotPro if self._preset == 'uber' else BrawlerBot
+            bbot = TriggerBotPro if self._preset == 'uber' else TriggerBot
             typed_bot_list_2: list[type[SpazBot]] = []
-            self._bot_types_initial = (typed_bot_list_2 + [StickyBot] +
-                                       [abot] * len(self.initialplayerinfos))
-            self._bot_types_7 = (
-                [bbot] * (1 if len(self.initialplayerinfos) < 3 else 2))
-            self._bot_types_14 = (
-                [ExplodeyBot] * (1 if len(self.initialplayerinfos) < 3 else 2))
+            self._bot_types_initial = (
+                typed_bot_list_2
+                + [StickyBot]
+                + [abot] * len(self.initialplayerinfos)
+            )
+            self._bot_types_7 = [bbot] * (
+                1 if len(self.initialplayerinfos) < 3 else 2
+            )
+            self._bot_types_14 = [ExplodeyBot] * (
+                1 if len(self.initialplayerinfos) < 3 else 2
+            )
         else:
             raise Exception()
 
@@ -497,9 +565,9 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         # Make a bogus team for our bots.
         bad_team_name = self.get_team_display_string('Bad Guys')
         self._bot_team = Team()
-        self._bot_team.manual_init(team_id=1,
-                                   name=bad_team_name,
-                                   color=(0.5, 0.4, 0.4))
+        self._bot_team.manual_init(
+            team_id=1, name=bad_team_name, color=(0.5, 0.4, 0.4)
+        )
 
         for team in [self.teams[0], self._bot_team]:
             team.score = 0
@@ -511,26 +579,32 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         assert isinstance(starttime_ms, int)
         self._starttime_ms = starttime_ms
         self._time_text = ba.NodeActor(
-            ba.newnode('text',
-                       attrs={
-                           'v_attach': 'top',
-                           'h_attach': 'center',
-                           'h_align': 'center',
-                           'color': (1, 1, 0.5, 1),
-                           'flatness': 0.5,
-                           'shadow': 0.5,
-                           'position': (0, -50),
-                           'scale': 1.3,
-                           'text': ''
-                       }))
+            ba.newnode(
+                'text',
+                attrs={
+                    'v_attach': 'top',
+                    'h_attach': 'center',
+                    'h_align': 'center',
+                    'color': (1, 1, 0.5, 1),
+                    'flatness': 0.5,
+                    'shadow': 0.5,
+                    'position': (0, -50),
+                    'scale': 1.3,
+                    'text': '',
+                },
+            )
+        )
         self._time_text_input = ba.NodeActor(
-            ba.newnode('timedisplay', attrs={'showsubseconds': True}))
-        self.globalsnode.connectattr('time', self._time_text_input.node,
-                                     'time2')
+            ba.newnode('timedisplay', attrs={'showsubseconds': True})
+        )
+        self.globalsnode.connectattr(
+            'time', self._time_text_input.node, 'time2'
+        )
         assert self._time_text_input.node
         assert self._time_text.node
-        self._time_text_input.node.connectattr('output', self._time_text.node,
-                                               'text')
+        self._time_text_input.node.connectattr(
+            'output', self._time_text.node, 'text'
+        )
 
         # Our TNT spawner (if applicable).
         if self._have_tnt:
@@ -542,22 +616,21 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         for bottype in self._bot_types_initial:
             self._spawn_bot(bottype)
 
-    def _on_got_scores_to_beat(self, scores: list[dict[str, Any]]) -> None:
-        self._show_standard_scores_to_beat_ui(scores)
-
     def _on_bot_spawn(self, spaz: SpazBot) -> None:
         # We want to move to the left by default.
         spaz.target_point_default = ba.Vec3(0, 0, 0)
 
-    def _spawn_bot(self,
-                   spaz_type: type[SpazBot],
-                   immediate: bool = False) -> None:
+    def _spawn_bot(
+        self, spaz_type: type[SpazBot], immediate: bool = False
+    ) -> None:
         assert self._bot_team is not None
         pos = self.map.get_start_position(self._bot_team.id)
-        self._bots.spawn_bot(spaz_type,
-                             pos=pos,
-                             spawn_time=0.001 if immediate else 3.0,
-                             on_spawn_call=self._on_bot_spawn)
+        self._bots.spawn_bot(
+            spaz_type,
+            pos=pos,
+            spawn_time=0.001 if immediate else 3.0,
+            on_spawn_call=self._on_bot_spawn,
+        )
 
     def _update_bots(self) -> None:
         bots = self._bots.get_living_bots()
@@ -576,12 +649,14 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
             for player in self.players:
                 if player.actor:
                     assert isinstance(player.actor, PlayerSpaz)
-                    if (player.actor.is_alive() and player.actor.node.hold_node
-                            == self._flag.node):
+                    if (
+                        player.actor.is_alive()
+                        and player.actor.node.hold_node == self._flag.node
+                    ):
                         return
 
             flagpos = ba.Vec3(self._flag.node.position)
-            closest_bot: Optional[SpazBot] = None
+            closest_bot: SpazBot | None = None
             closest_dist = 0.0  # Always gets assigned first time through.
             for bot in bots:
                 # If a bot is picked up, he should forget about the flag.
@@ -596,39 +671,52 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
             if closest_bot is not None:
                 closest_bot.target_flag = self._flag
 
-    def _drop_powerup(self, index: int, poweruptype: str = None) -> None:
+    def _drop_powerup(self, index: int, poweruptype: str | None = None) -> None:
         if poweruptype is None:
-            poweruptype = (PowerupBoxFactory.get().get_random_powerup_type(
-                excludetypes=self._exclude_powerups))
-        PowerupBox(position=self.map.powerup_spawn_points[index],
-                   poweruptype=poweruptype).autoretain()
+            poweruptype = PowerupBoxFactory.get().get_random_powerup_type(
+                excludetypes=self._exclude_powerups
+            )
+        PowerupBox(
+            position=self.map.powerup_spawn_points[index],
+            poweruptype=poweruptype,
+        ).autoretain()
 
     def _start_powerup_drops(self) -> None:
-        self._powerup_drop_timer = ba.Timer(3.0,
-                                            self._drop_powerups,
-                                            repeat=True)
+        self._powerup_drop_timer = ba.Timer(
+            3.0, self._drop_powerups, repeat=True
+        )
 
-    def _drop_powerups(self,
-                       standard_points: bool = False,
-                       poweruptype: str = None) -> None:
+    def _drop_powerups(
+        self, standard_points: bool = False, poweruptype: str | None = None
+    ) -> None:
         """Generic powerup drop."""
         if standard_points:
             spawnpoints = self.map.powerup_spawn_points
             for i, _point in enumerate(spawnpoints):
-                ba.timer(1.0 + i * 0.5,
-                         ba.Call(self._drop_powerup, i, poweruptype))
+                ba.timer(
+                    1.0 + i * 0.5, ba.Call(self._drop_powerup, i, poweruptype)
+                )
         else:
-            point = (self._powerup_center[0] + random.uniform(
-                -1.0 * self._powerup_spread[0], 1.0 * self._powerup_spread[0]),
-                     self._powerup_center[1],
-                     self._powerup_center[2] + random.uniform(
-                         -self._powerup_spread[1], self._powerup_spread[1]))
+            point = (
+                self._powerup_center[0]
+                + random.uniform(
+                    -1.0 * self._powerup_spread[0],
+                    1.0 * self._powerup_spread[0],
+                ),
+                self._powerup_center[1],
+                self._powerup_center[2]
+                + random.uniform(
+                    -self._powerup_spread[1], self._powerup_spread[1]
+                ),
+            )
 
             # Drop one random one somewhere.
             PowerupBox(
                 position=point,
                 poweruptype=PowerupBoxFactory.get().get_random_powerup_type(
-                    excludetypes=self._exclude_powerups)).autoretain()
+                    excludetypes=self._exclude_powerups
+                ),
+            ).autoretain()
 
     def _kill_flag(self) -> None:
         try:
@@ -638,7 +726,7 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
             ba.print_exception('Error in _kill_flag.')
 
     def _handle_score(self) -> None:
-        """ a point has been scored """
+        """a point has been scored"""
         # FIXME tidy this up
         # pylint: disable=too-many-branches
 
@@ -664,8 +752,7 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
                 if i == 0:
                     for player in team.players:
                         if player.actor:
-                            player.actor.handlemessage(
-                                ba.CelebrateMessage(2.0))
+                            player.actor.handlemessage(ba.CelebrateMessage(2.0))
                 else:
                     self._bots.celebrate(2.0)
 
@@ -692,12 +779,14 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         ba.timer(0.2, self._kill_flag)
 
         self.update_scores()
-        light = ba.newnode('light',
-                           attrs={
-                               'position': ba.getcollision().position,
-                               'height_attenuated': False,
-                               'color': (1, 0, 0)
-                           })
+        light = ba.newnode(
+            'light',
+            attrs={
+                'position': ba.getcollision().position,
+                'height_attenuated': False,
+                'color': (1, 0, 0),
+            },
+        )
         ba.animate(light, 'intensity', {0: 0, 0.5: 1, 1.0: 0}, loop=True)
         ba.timer(1.0, light.delete)
         if i == 0:
@@ -716,7 +805,7 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         self.update_scores()
 
     def update_scores(self) -> None:
-        """ update scoreboard and check for winners """
+        """update scoreboard and check for winners"""
         # FIXME: tidy this up
         # pylint: disable=too-many-nested-blocks
         have_scoring_team = False
@@ -736,41 +825,54 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
                         # Completion achievements.
                         assert self._bot_team is not None
                         if self._preset in ['rookie', 'rookie_easy']:
-                            self._award_achievement('Rookie Football Victory',
-                                                    sound=False)
+                            self._award_achievement(
+                                'Rookie Football Victory', sound=False
+                            )
                             if self._bot_team.score == 0:
                                 self._award_achievement(
-                                    'Rookie Football Shutout', sound=False)
+                                    'Rookie Football Shutout', sound=False
+                                )
                         elif self._preset in ['pro', 'pro_easy']:
-                            self._award_achievement('Pro Football Victory',
-                                                    sound=False)
-                            if self._bot_team.score == 0:
-                                self._award_achievement('Pro Football Shutout',
-                                                        sound=False)
-                        elif self._preset in ['uber', 'uber_easy']:
-                            self._award_achievement('Uber Football Victory',
-                                                    sound=False)
+                            self._award_achievement(
+                                'Pro Football Victory', sound=False
+                            )
                             if self._bot_team.score == 0:
                                 self._award_achievement(
-                                    'Uber Football Shutout', sound=False)
-                            if (not self._player_has_dropped_bomb
-                                    and not self._player_has_punched):
-                                self._award_achievement('Got the Moves',
-                                                        sound=False)
+                                    'Pro Football Shutout', sound=False
+                                )
+                        elif self._preset in ['uber', 'uber_easy']:
+                            self._award_achievement(
+                                'Uber Football Victory', sound=False
+                            )
+                            if self._bot_team.score == 0:
+                                self._award_achievement(
+                                    'Uber Football Shutout', sound=False
+                                )
+                            if (
+                                not self._player_has_dropped_bomb
+                                and not self._player_has_punched
+                            ):
+                                self._award_achievement(
+                                    'Got the Moves', sound=False
+                                )
                         self._bots.stop_moving()
-                        self.show_zoom_message(ba.Lstr(resource='victoryText'),
-                                               scale=1.0,
-                                               duration=4.0)
+                        self.show_zoom_message(
+                            ba.Lstr(resource='victoryText'),
+                            scale=1.0,
+                            duration=4.0,
+                        )
                         self.celebrate(10.0)
                         assert self._starttime_ms is not None
                         self._final_time_ms = int(
-                            ba.time(timeformat=ba.TimeFormat.MILLISECONDS) -
-                            self._starttime_ms)
+                            ba.time(timeformat=ba.TimeFormat.MILLISECONDS)
+                            - self._starttime_ms
+                        )
                         self._time_text_timer = None
-                        assert (self._time_text_input is not None
-                                and self._time_text_input.node)
-                        self._time_text_input.node.timemax = (
-                            self._final_time_ms)
+                        assert (
+                            self._time_text_input is not None
+                            and self._time_text_input.node
+                        )
+                        self._time_text_input.node.timemax = self._final_time_ms
 
                         # FIXME: Does this still need to be deferred?
                         ba.pushcall(ba.Call(self.do_end, 'victory'))
@@ -779,18 +881,22 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         """End the game with the specified outcome."""
         if outcome == 'defeat':
             self.fade_to_red()
-        #assert self._final_time_ms is not None
-        scoreval = (None if outcome == 'defeat' else 5)
-        self.end(delay=3.0,
-                 results={
-                     'outcome': outcome,
-                     'score': scoreval,
-                     'score_order': 'decreasing',
-                     'playerinfos': self.initialplayerinfos
-                 })
+        assert self._final_time_ms is not None
+        scoreval = (
+            None if outcome == 'defeat' else int(self._final_time_ms // 10)
+        )
+        self.end(
+            delay=3.0,
+            results={
+                'outcome': outcome,
+                'score': scoreval,
+                'score_order': 'decreasing',
+                'playerinfos': self.initialplayerinfos,
+            },
+        )
 
     def handlemessage(self, msg: Any) -> Any:
-        """ handle high-level game messages """
+        """handle high-level game messages"""
         if isinstance(msg, ba.PlayerDiedMessage):
             # Augment standard behavior.
             super().handlemessage(msg)
@@ -800,7 +906,8 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
             assert self.initialplayerinfos is not None
             respawn_time = 2.0 + len(self.initialplayerinfos) * 1.0
             player.respawn_timer = ba.Timer(
-                respawn_time, ba.Call(self.spawn_player_if_exists, player))
+                respawn_time, ba.Call(self.spawn_player_if_exists, player)
+            )
             player.respawn_icon = RespawnIcon(player, respawn_time)
 
         elif isinstance(msg, SpazBotDiedMessage):
@@ -821,28 +928,29 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
             assert isinstance(msg.flag, FootballFlag)
             msg.flag.respawn_timer = ba.Timer(3.0, self._spawn_flag)
             self._flag_respawn_light = ba.NodeActor(
-                ba.newnode('light',
-                           attrs={
-                               'position': self._flag_spawn_pos,
-                               'height_attenuated': False,
-                               'radius': 0.15,
-                               'color': (1.0, 1.0, 0.3)
-                           }))
+                ba.newnode(
+                    'light',
+                    attrs={
+                        'position': self._flag_spawn_pos,
+                        'height_attenuated': False,
+                        'radius': 0.15,
+                        'color': (1.0, 1.0, 0.3),
+                    },
+                )
+            )
             assert self._flag_respawn_light.node
-            ba.animate(self._flag_respawn_light.node,
-                       'intensity', {
-                           0: 0,
-                           0.25: 0.15,
-                           0.5: 0
-                       },
-                       loop=True)
+            ba.animate(
+                self._flag_respawn_light.node,
+                'intensity',
+                {0: 0, 0.25: 0.15, 0.5: 0},
+                loop=True,
+            )
             ba.timer(3.0, self._flag_respawn_light.node.delete)
         else:
             return super().handlemessage(msg)
         return None
 
-    def _handle_player_dropped_bomb(self, player: Spaz,
-                                    bomb: ba.Actor) -> None:
+    def _handle_player_dropped_bomb(self, player: Spaz, bomb: ba.Actor) -> None:
         del player, bomb  # Unused.
         self._player_has_dropped_bomb = True
 
@@ -851,9 +959,9 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         self._player_has_punched = True
 
     def spawn_player(self, player: Player) -> ba.Actor:
-        spaz = self.spawn_player_spaz(player,
-                                      position=self.map.get_start_position(
-                                          player.team.id))
+        spaz = self.spawn_player_spaz(
+            player, position=self.map.get_start_position(player.team.id)
+        )
         if self._preset in ['rookie_easy', 'pro_easy', 'uber_easy']:
             spaz.impact_scale = 0.25
         spaz.add_dropped_bomb_callback(self._handle_player_dropped_bomb)
@@ -861,12 +969,14 @@ class FootballCoopGame(ba.CoopGameActivity[Player, Team]):
         return spaz
 
     def _flash_flag_spawn(self) -> None:
-        light = ba.newnode('light',
-                           attrs={
-                               'position': self._flag_spawn_pos,
-                               'height_attenuated': False,
-                               'color': (1, 1, 0)
-                           })
+        light = ba.newnode(
+            'light',
+            attrs={
+                'position': self._flag_spawn_pos,
+                'height_attenuated': False,
+                'color': (1, 1, 0),
+            },
+        )
         ba.animate(light, 'intensity', {0: 0, 0.25: 0.25, 0.5: 0}, loop=True)
         ba.timer(1.0, light.delete)
 

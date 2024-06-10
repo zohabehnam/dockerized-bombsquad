@@ -2,7 +2,7 @@
 #
 """Provides Ninja Fight mini-game."""
 
-# ba_meta require api 6
+# ba_meta require api 7
 # (see https://ballistica.net/wiki/meta-tag-system)
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from bastd.actor.spazbot import SpazBotSet, ChargerBot, SpazBotDiedMessage
 from bastd.actor.onscreentimer import OnScreenTimer
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
 
 
 class Player(ba.Player['Team']):
@@ -35,9 +35,9 @@ class NinjaFightGame(ba.TeamGameActivity[Player, Team]):
 
     name = 'Ninja Fight'
     description = 'How fast can you defeat the ninjas?'
-    scoreconfig = ba.ScoreConfig(label='Time',
-                                 scoretype=ba.ScoreType.MILLISECONDS,
-                                 lower_is_better=True)
+    scoreconfig = ba.ScoreConfig(
+        label='Time', scoretype=ba.ScoreType.MILLISECONDS, lower_is_better=True
+    )
     default_music = ba.MusicType.TO_THE_DEATH
 
     @classmethod
@@ -58,7 +58,7 @@ class NinjaFightGame(ba.TeamGameActivity[Player, Team]):
         super().__init__(settings)
         self._winsound = ba.getsound('score')
         self._won = False
-        self._timer: Optional[OnScreenTimer] = None
+        self._timer: OnScreenTimer | None = None
         self._bots = SpazBotSet()
         self._preset = str(settings['preset'])
 
@@ -77,36 +77,57 @@ class NinjaFightGame(ba.TeamGameActivity[Player, Team]):
 
         # Spawn some baddies.
         ba.timer(
-            1.0, lambda: self._bots.spawn_bot(
-                ChargerBot, pos=(3, 3, -2), spawn_time=3.0))
+            1.0,
+            lambda: self._bots.spawn_bot(
+                ChargerBot, pos=(3, 3, -2), spawn_time=3.0
+            ),
+        )
         ba.timer(
-            2.0, lambda: self._bots.spawn_bot(
-                ChargerBot, pos=(-3, 3, -2), spawn_time=3.0))
+            2.0,
+            lambda: self._bots.spawn_bot(
+                ChargerBot, pos=(-3, 3, -2), spawn_time=3.0
+            ),
+        )
         ba.timer(
-            3.0, lambda: self._bots.spawn_bot(
-                ChargerBot, pos=(5, 3, -2), spawn_time=3.0))
+            3.0,
+            lambda: self._bots.spawn_bot(
+                ChargerBot, pos=(5, 3, -2), spawn_time=3.0
+            ),
+        )
         ba.timer(
-            4.0, lambda: self._bots.spawn_bot(
-                ChargerBot, pos=(-5, 3, -2), spawn_time=3.0))
+            4.0,
+            lambda: self._bots.spawn_bot(
+                ChargerBot, pos=(-5, 3, -2), spawn_time=3.0
+            ),
+        )
 
         # Add some extras for multiplayer or pro mode.
         assert self.initialplayerinfos is not None
         if len(self.initialplayerinfos) > 2 or is_pro:
             ba.timer(
-                5.0, lambda: self._bots.spawn_bot(
-                    ChargerBot, pos=(0, 3, -5), spawn_time=3.0))
+                5.0,
+                lambda: self._bots.spawn_bot(
+                    ChargerBot, pos=(0, 3, -5), spawn_time=3.0
+                ),
+            )
         if len(self.initialplayerinfos) > 3 or is_pro:
             ba.timer(
-                6.0, lambda: self._bots.spawn_bot(
-                    ChargerBot, pos=(0, 3, 1), spawn_time=3.0))
+                6.0,
+                lambda: self._bots.spawn_bot(
+                    ChargerBot, pos=(0, 3, 1), spawn_time=3.0
+                ),
+            )
 
     # Called for each spawning player.
     def spawn_player(self, player: Player) -> ba.Actor:
 
         # Let's spawn close to the center.
         spawn_center = (0, 3, -2)
-        pos = (spawn_center[0] + random.uniform(-1.5, 1.5), spawn_center[1],
-               spawn_center[2] + random.uniform(-1.5, 1.5))
+        pos = (
+            spawn_center[0] + random.uniform(-1.5, 1.5),
+            spawn_center[1],
+            spawn_center[2] + random.uniform(-1.5, 1.5),
+        )
         return self.spawn_player_spaz(player, position=pos)
 
     def _check_if_won(self) -> None:

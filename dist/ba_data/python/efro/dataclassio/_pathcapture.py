@@ -19,7 +19,7 @@ T = TypeVar('T')
 class _PathCapture:
     """Utility for obtaining dataclass storage paths in a type safe way."""
 
-    def __init__(self, obj: Any, pathparts: list[str] = None):
+    def __init__(self, obj: Any, pathparts: list[str] | None = None):
         self._is_dataclass = dataclasses.is_dataclass(obj)
         if pathparts is None:
             pathparts = []
@@ -32,17 +32,23 @@ class _PathCapture:
         if not self._is_dataclass:
             raise TypeError(
                 f"Field path cannot include attribute '{name}' "
-                f'under parent {self._cls}; parent types must be dataclasses.')
+                f'under parent {self._cls}; parent types must be dataclasses.'
+            )
 
-        prep = PrepSession(explicit=False).prep_dataclass(self._cls,
-                                                          recursion_level=0)
+        prep = PrepSession(explicit=False).prep_dataclass(
+            self._cls, recursion_level=0
+        )
+        assert prep is not None
         try:
             anntype = prep.annotations[name]
         except KeyError as exc:
             raise AttributeError(f'{type(self)} has no {name} field.') from exc
         anntype, ioattrs = _parse_annotated(anntype)
-        storagename = (name if (ioattrs is None or ioattrs.storagename is None)
-                       else ioattrs.storagename)
+        storagename = (
+            name
+            if (ioattrs is None or ioattrs.storagename is None)
+            else ioattrs.storagename
+        )
         origin = _get_origin(anntype)
         return _PathCapture(origin, pathparts=self._pathparts + [storagename])
 
@@ -75,13 +81,15 @@ class DataclassFieldLookup(Generic[T]):
         # We tell the type system that we are returning an instance
         # of our class, which allows it to perform type checking on
         # member lookups. In reality, however, we are providing a
-        # special object which captures path lookups so we can build
+        # special object which captures path lookups, so we can build
         # a string from them.
         if not TYPE_CHECKING:
             out = callback(_PathCapture(self.cls))
             if not isinstance(out, _PathCapture):
-                raise TypeError(f'Expected a valid path under'
-                                f' the provided object; got a {type(out)}.')
+                raise TypeError(
+                    f'Expected a valid path under'
+                    f' the provided object; got a {type(out)}.'
+                )
             return out.path
         return ''
 
@@ -101,6 +109,7 @@ class DataclassFieldLookup(Generic[T]):
                 if not isinstance(out, _PathCapture):
                     raise TypeError(
                         f'Expected a valid path under'
-                        f' the provided object; got a {type(out)}.')
+                        f' the provided object; got a {type(out)}.'
+                    )
                 outvals.append(out.path)
         return outvals

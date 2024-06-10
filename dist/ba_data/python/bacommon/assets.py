@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional, Annotated
+from typing import TYPE_CHECKING, Annotated
 from enum import Enum
 
 from efro.dataclassio import ioprepped, IOAttrs
@@ -26,6 +26,7 @@ class AssetPackageFlavor(Enum):
 
 class AssetType(Enum):
     """Types for individual assets within a package."""
+
     TEXTURE = 'texture'
     CUBE_TEXTURE = 'cube_texture'
     SOUND = 'sound'
@@ -38,8 +39,10 @@ class AssetType(Enum):
 @dataclass
 class AssetPackageFlavorManifest:
     """A manifest of asset info for a specific flavor of an asset package."""
-    assetfiles: Annotated[dict[str, str],
-                          IOAttrs('assetfiles')] = field(default_factory=dict)
+
+    cloudfiles: Annotated[dict[str, str], IOAttrs('cloudfiles')] = field(
+        default_factory=dict
+    )
 
 
 @ioprepped
@@ -48,8 +51,9 @@ class AssetPackageBuildState:
     """Contains info about an in-progress asset cloud build."""
 
     # Asset names still being built.
-    in_progress_builds: Annotated[list[str],
-                                  IOAttrs('b')] = field(default_factory=list)
+    in_progress_builds: Annotated[list[str], IOAttrs('b')] = field(
+        default_factory=list
+    )
 
     # The initial number of assets needing to be built.
     initial_build_count: Annotated[int, IOAttrs('c')] = 0
@@ -57,4 +61,4 @@ class AssetPackageBuildState:
     # Build error string. If this is present, it should be presented
     # to the user and they should required to explicitly restart the build
     # in some way if desired.
-    error: Annotated[Optional[str], IOAttrs('e')] = None
+    error: Annotated[str | None, IOAttrs('e')] = None

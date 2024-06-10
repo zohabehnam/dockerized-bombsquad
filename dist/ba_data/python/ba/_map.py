@@ -11,14 +11,14 @@ from ba import _math
 from ba._actor import Actor
 
 if TYPE_CHECKING:
-    from typing import Optional, Sequence, Any
+    from typing import Sequence, Any
     import ba
 
 
 def preload_map_preview_media() -> None:
     """Preload media needed for map preview UIs.
 
-    Category: Asset Functions
+    Category: **Asset Functions**
     """
     _ba.getmodel('level_select_button_opaque')
     _ba.getmodel('level_select_button_transparent')
@@ -31,7 +31,7 @@ def preload_map_preview_media() -> None:
 def get_filtered_map_name(name: str) -> str:
     """Filter a map name to account for name changes, etc.
 
-    Category: Asset Functions
+    Category: **Asset Functions**
 
     This can be used to support old playlists, etc.
     """
@@ -46,16 +46,17 @@ def get_filtered_map_name(name: str) -> str:
 def get_map_display_string(name: str) -> ba.Lstr:
     """Return a ba.Lstr for displaying a given map\'s name.
 
-    Category: Asset Functions
+    Category: **Asset Functions**
     """
     from ba import _language
+
     return _language.Lstr(translate=('mapsNames', name))
 
 
 def getmaps(playtype: str) -> list[str]:
     """Return a list of ba.Map types supporting a playtype str.
 
-    Category: Asset Functions
+    Category: **Asset Functions**
 
     Maps supporting a given playtype must provide a particular set of
     features and lend themselves to a certain style of play.
@@ -97,47 +98,36 @@ def getmaps(playtype: str) -> list[str]:
       For racing games where players much touch each region in order.
       Has two or more 'race_point' locations.
     """
-    return sorted(key for key, val in _ba.app.maps.items()
-                  if playtype in val.get_play_types())
-
-
-def get_unowned_maps() -> list[str]:
-    """Return the list of local maps not owned by the current account.
-
-    Category: Asset Functions
-    """
-    from ba import _store
-    unowned_maps: set[str] = set()
-    if not _ba.app.headless_mode:
-        for map_section in _store.get_store_layout()['maps']:
-            for mapitem in map_section['items']:
-                if not _ba.get_purchased(mapitem):
-                    m_info = _store.get_store_item(mapitem)
-                    unowned_maps.add(m_info['map_type'].name)
-    return sorted(unowned_maps)
+    return sorted(
+        key
+        for key, val in _ba.app.maps.items()
+        if playtype in val.get_play_types()
+    )
 
 
 def get_map_class(name: str) -> type[ba.Map]:
     """Return a map type given a name.
 
-    Category: Asset Functions
+    Category: **Asset Functions**
     """
     name = get_filtered_map_name(name)
     try:
         return _ba.app.maps[name]
     except KeyError:
         from ba import _error
+
         raise _error.NotFoundError(f"Map not found: '{name}'") from None
 
 
 class Map(Actor):
     """A game map.
 
-    Category: Gameplay Classes
+    Category: **Gameplay Classes**
 
     Consists of a collection of terrain nodes, metadata, and other
     functionality comprising a game map.
     """
+
     defs: Any = None
     name = 'Map'
     _playtypes: list[str] = []
@@ -161,7 +151,7 @@ class Map(Actor):
         return []
 
     @classmethod
-    def get_preview_texture_name(cls) -> Optional[str]:
+    def get_preview_texture_name(cls) -> str | None:
         """Return the name of the preview texture for this map."""
         return None
 
@@ -179,22 +169,22 @@ class Map(Actor):
         return cls.name
 
     @classmethod
-    def get_music_type(cls) -> Optional[ba.MusicType]:
+    def get_music_type(cls) -> ba.MusicType | None:
         """Return a music-type string that should be played on this map.
 
         If None is returned, default music will be used.
         """
         return None
 
-    def __init__(self,
-                 vr_overlay_offset: Optional[Sequence[float]] = None) -> None:
+    def __init__(
+        self, vr_overlay_offset: Sequence[float] | None = None
+    ) -> None:
         """Instantiate a map."""
-        from ba import _gameutils
         super().__init__()
 
         # This is expected to always be a ba.Node object (whether valid or not)
         # should be set to something meaningful by child classes.
-        self.node: Optional[_ba.Node] = None
+        self.node: _ba.Node | None = None
 
         # Make our class' preload-data available to us
         # (and instruct the user if we weren't preloaded properly).
@@ -202,16 +192,20 @@ class Map(Actor):
             self.preloaddata = _ba.getactivity().preloads[type(self)]
         except Exception as exc:
             from ba import _error
+
             raise _error.NotFoundError(
-                'Preload data not found for ' + str(type(self)) +
-                '; make sure to call the type\'s preload()'
-                ' staticmethod in the activity constructor') from exc
+                'Preload data not found for '
+                + str(type(self))
+                + '; make sure to call the type\'s preload()'
+                ' staticmethod in the activity constructor'
+            ) from exc
 
         # Set various globals.
         gnode = _ba.getactivity().globalsnode
         import ba
-        from tools import textonmap
-        textonmap.textonmap()
+        import custom_hooks
+        custom_hooks.on_map_init()
+
 
         # Set area-of-interest bounds.
         aoi_bounds = self.get_def_bound_box('area_of_interest_bounds')
@@ -230,9 +224,12 @@ class Map(Actor):
         # Set shadow ranges.
         try:
             gnode.shadow_range = [
-                self.defs.points[v][1] for v in [
-                    'shadow_lower_bottom', 'shadow_lower_top',
-                    'shadow_upper_bottom', 'shadow_upper_top'
+                self.defs.points[v][1]
+                for v in [
+                    'shadow_lower_bottom',
+                    'shadow_lower_top',
+                    'shadow_upper_bottom',
+                    'shadow_upper_top',
                 ]
             ]
         except Exception:
@@ -240,36 +237,42 @@ class Map(Actor):
 
         # In vr, set a fixed point in space for the overlay to show up at.
         # By default we use the bounds center but allow the map to override it.
-        center = ((aoi_bounds[0] + aoi_bounds[3]) * 0.5,
-                  (aoi_bounds[1] + aoi_bounds[4]) * 0.5,
-                  (aoi_bounds[2] + aoi_bounds[5]) * 0.5)
+        center = (
+            (aoi_bounds[0] + aoi_bounds[3]) * 0.5,
+            (aoi_bounds[1] + aoi_bounds[4]) * 0.5,
+            (aoi_bounds[2] + aoi_bounds[5]) * 0.5,
+        )
         if vr_overlay_offset is not None:
-            center = (center[0] + vr_overlay_offset[0],
-                      center[1] + vr_overlay_offset[1],
-                      center[2] + vr_overlay_offset[2])
+            center = (
+                center[0] + vr_overlay_offset[0],
+                center[1] + vr_overlay_offset[1],
+                center[2] + vr_overlay_offset[2],
+            )
         gnode.vr_overlay_center = center
         gnode.vr_overlay_center_enabled = True
 
-        self.spawn_points = (self.get_def_points('spawn')
-                             or [(0, 0, 0, 0, 0, 0)])
-        self.ffa_spawn_points = (self.get_def_points('ffa_spawn')
-                                 or [(0, 0, 0, 0, 0, 0)])
-        self.spawn_by_flag_points = (self.get_def_points('spawn_by_flag')
-                                     or [(0, 0, 0, 0, 0, 0)])
+        self.spawn_points = self.get_def_points('spawn') or [(0, 0, 0, 0, 0, 0)]
+        self.ffa_spawn_points = self.get_def_points('ffa_spawn') or [
+            (0, 0, 0, 0, 0, 0)
+        ]
+        self.spawn_by_flag_points = self.get_def_points('spawn_by_flag') or [
+            (0, 0, 0, 0, 0, 0)
+        ]
         self.flag_points = self.get_def_points('flag') or [(0, 0, 0)]
 
         # We just want points.
         self.flag_points = [p[:3] for p in self.flag_points]
-        self.flag_points_default = (self.get_def_point('flag_default')
-                                    or (0, 1, 0))
+        self.flag_points_default = self.get_def_point('flag_default') or (
+            0,
+            1,
+            0,
+        )
         self.powerup_spawn_points = self.get_def_points('powerup_spawn') or [
             (0, 0, 0)
         ]
 
         # We just want points.
-        self.powerup_spawn_points = ([
-            p[:3] for p in self.powerup_spawn_points
-        ])
+        self.powerup_spawn_points = [p[:3] for p in self.powerup_spawn_points]
         self.tnt_points = self.get_def_points('tnt') or []
 
         # We just want points.
@@ -282,11 +285,10 @@ class Map(Actor):
         # Let's select random index for first spawn point,
         # so that no one is offended by the constant spawn on the edge.
         self._next_ffa_start_index = random.randrange(
-            len(self.ffa_spawn_points))
+            len(self.ffa_spawn_points)
+        )
 
-    def is_point_near_edge(self,
-                           point: ba.Vec3,
-                           running: bool = False) -> bool:
+    def is_point_near_edge(self, point: ba.Vec3, running: bool = False) -> bool:
         """Return whether the provided point is near an edge of the map.
 
         Simple bot logic uses this call to determine if they
@@ -299,21 +301,31 @@ class Map(Actor):
 
     def get_def_bound_box(
         self, name: str
-    ) -> Optional[tuple[float, float, float, float, float, float]]:
+    ) -> tuple[float, float, float, float, float, float] | None:
         """Return a 6 member bounds tuple or None if it is not defined."""
         try:
             box = self.defs.boxes[name]
-            return (box[0] - box[6] / 2.0, box[1] - box[7] / 2.0,
-                    box[2] - box[8] / 2.0, box[0] + box[6] / 2.0,
-                    box[1] + box[7] / 2.0, box[2] + box[8] / 2.0)
+            return (
+                box[0] - box[6] / 2.0,
+                box[1] - box[7] / 2.0,
+                box[2] - box[8] / 2.0,
+                box[0] + box[6] / 2.0,
+                box[1] + box[7] / 2.0,
+                box[2] + box[8] / 2.0,
+            )
         except Exception:
             return None
 
-    def get_def_point(self, name: str) -> Optional[Sequence[float]]:
+    def get_def_point(self, name: str) -> Sequence[float] | None:
         """Return a single defined point or a default value in its absence."""
         val = self.defs.points.get(name)
-        return (None if val is None else
-                _math.vec3validate(val) if __debug__ else val)
+        return (
+            None
+            if val is None
+            else _math.vec3validate(val)
+            if __debug__
+            else val
+        )
 
     def get_def_points(self, name: str) -> list[Sequence[float]]:
         """Return a list of named points.
@@ -340,15 +352,19 @@ class Map(Actor):
         pnt = self.spawn_points[team_index % len(self.spawn_points)]
         x_range = (-0.5, 0.5) if pnt[3] == 0.0 else (-pnt[3], pnt[3])
         z_range = (-0.5, 0.5) if pnt[5] == 0.0 else (-pnt[5], pnt[5])
-        pnt = (pnt[0] + random.uniform(*x_range), pnt[1],
-               pnt[2] + random.uniform(*z_range))
+        pnt = (
+            pnt[0] + random.uniform(*x_range),
+            pnt[1],
+            pnt[2] + random.uniform(*z_range),
+        )
         return pnt
 
     def get_ffa_start_position(
-            self, players: Sequence[ba.Player]) -> Sequence[float]:
+        self, players: Sequence[ba.Player]
+    ) -> Sequence[float]:
         """Return a random starting position in one of the FFA spawn areas.
 
-        If a list of ba.Players is provided; the returned points will be
+        If a list of ba.Player-s is provided; the returned points will be
         as far from these players as possible.
         """
 
@@ -360,12 +376,16 @@ class Map(Actor):
 
         def _getpt() -> Sequence[float]:
             point = self.ffa_spawn_points[self._next_ffa_start_index]
-            self._next_ffa_start_index = ((self._next_ffa_start_index + 1) %
-                                          len(self.ffa_spawn_points))
+            self._next_ffa_start_index = (self._next_ffa_start_index + 1) % len(
+                self.ffa_spawn_points
+            )
             x_range = (-0.5, 0.5) if point[3] == 0.0 else (-point[3], point[3])
             z_range = (-0.5, 0.5) if point[5] == 0.0 else (-point[5], point[5])
-            point = (point[0] + random.uniform(*x_range), point[1],
-                     point[2] + random.uniform(*z_range))
+            point = (
+                point[0] + random.uniform(*x_range),
+                point[1],
+                point[2] + random.uniform(*z_range),
+            )
             return point
 
         if not player_pts:
@@ -388,7 +408,9 @@ class Map(Actor):
         assert farthestpt is not None
         return tuple(farthestpt)
 
-    def get_flag_position(self, team_index: int = None) -> Sequence[float]:
+    def get_flag_position(
+        self, team_index: int | None = None
+    ) -> Sequence[float]:
         """Return a flag position on the map for the given team index.
 
         Pass None to get the default flag point.
@@ -403,6 +425,7 @@ class Map(Actor):
 
     def handlemessage(self, msg: Any) -> Any:
         from ba import _messages
+
         if isinstance(msg, _messages.DieMessage):
             if self.node:
                 self.node.delete()

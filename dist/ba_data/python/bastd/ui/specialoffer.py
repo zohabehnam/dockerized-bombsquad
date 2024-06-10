@@ -7,11 +7,11 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING
 
-import _ba
 import ba
+import ba.internal
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Union
+    from typing import Any
 
 
 class SpecialOfferWindow(ba.Window):
@@ -21,9 +21,10 @@ class SpecialOfferWindow(ba.Window):
         # pylint: disable=too-many-statements
         # pylint: disable=too-many-branches
         # pylint: disable=too-many-locals
-        from ba.internal import (get_store_item_display_size, get_clean_price)
+        from ba.internal import get_store_item_display_size, get_clean_price
         from ba import SpecialChar
         from bastd.ui.store import item as storeitemui
+
         self._cancel_delay = offer.get('cancelDelay', 0)
 
         # First thing: if we're offering pro or an IAP, see if we have a
@@ -31,19 +32,20 @@ class SpecialOfferWindow(ba.Window):
         # If not, abort and go into zombie mode (the user should never see
         # us that way).
 
-        real_price: Optional[str]
+        real_price: str | None
 
         # Misnomer: 'pro' actually means offer 'pro_sale'.
         if offer['item'] in ['pro', 'pro_fullprice']:
-            real_price = _ba.get_price('pro' if offer['item'] ==
-                                       'pro_fullprice' else 'pro_sale')
+            real_price = ba.internal.get_price(
+                'pro' if offer['item'] == 'pro_fullprice' else 'pro_sale'
+            )
             if real_price is None and ba.app.debug_build:
                 print('NOTE: Faking prices for debug build.')
                 real_price = '$1.23'
             zombie = real_price is None
         elif isinstance(offer['price'], str):
             # (a string price implies IAP id)
-            real_price = _ba.get_price(offer['price'])
+            real_price = ba.internal.get_price(offer['price'])
             if real_price is None and ba.app.debug_build:
                 print('NOTE: Faking price for debug build.')
                 real_price = '$1.23'
@@ -64,39 +66,54 @@ class SpecialOfferWindow(ba.Window):
             return
 
         # This can pop up suddenly, so lets block input for 1 second.
-        _ba.lock_all_input()
-        ba.timer(1.0, _ba.unlock_all_input, timetype=ba.TimeType.REAL)
+        ba.internal.lock_all_input()
+        ba.timer(1.0, ba.internal.unlock_all_input, timetype=ba.TimeType.REAL)
         ba.playsound(ba.getsound('ding'))
-        ba.timer(0.3,
-                 lambda: ba.playsound(ba.getsound('ooh')),
-                 timetype=ba.TimeType.REAL)
+        ba.timer(
+            0.3,
+            lambda: ba.playsound(ba.getsound('ooh')),
+            timetype=ba.TimeType.REAL,
+        )
         self._offer = copy.deepcopy(offer)
         self._width = 580
         self._height = 590
         uiscale = ba.app.ui.uiscale
-        super().__init__(root_widget=ba.containerwidget(
-            size=(self._width, self._height),
-            transition=transition,
-            scale=(1.2 if uiscale is ba.UIScale.SMALL else
-                   1.15 if uiscale is ba.UIScale.MEDIUM else 1.0),
-            stack_offset=(0, -15) if uiscale is ba.UIScale.SMALL else (0, 0)))
+        super().__init__(
+            root_widget=ba.containerwidget(
+                size=(self._width, self._height),
+                transition=transition,
+                scale=(
+                    1.2
+                    if uiscale is ba.UIScale.SMALL
+                    else 1.15
+                    if uiscale is ba.UIScale.MEDIUM
+                    else 1.0
+                ),
+                stack_offset=(0, -15)
+                if uiscale is ba.UIScale.SMALL
+                else (0, 0),
+            )
+        )
         self._is_bundle_sale = False
         try:
             if offer['item'] in ['pro', 'pro_fullprice']:
-                original_price_str = _ba.get_price('pro')
+                original_price_str = ba.internal.get_price('pro')
                 if original_price_str is None:
                     original_price_str = '?'
-                new_price_str = _ba.get_price('pro_sale')
+                new_price_str = ba.internal.get_price('pro_sale')
                 if new_price_str is None:
                     new_price_str = '?'
                 percent_off_text = ''
             else:
                 # If the offer includes bonus tickets, it's a bundle-sale.
-                if ('bonusTickets' in offer
-                        and offer['bonusTickets'] is not None):
+                if (
+                    'bonusTickets' in offer
+                    and offer['bonusTickets'] is not None
+                ):
                     self._is_bundle_sale = True
-                original_price = _ba.get_account_misc_read_val(
-                    'price.' + self._offer_item, 9999)
+                original_price = ba.internal.get_v1_account_misc_read_val(
+                    'price.' + self._offer_item, 9999
+                )
 
                 # For pure ticket prices we can show a percent-off.
                 if isinstance(offer['price'], int):
@@ -105,11 +122,13 @@ class SpecialOfferWindow(ba.Window):
                     original_price_str = tchar + str(original_price)
                     new_price_str = tchar + str(new_price)
                     percent_off = int(
-                        round(100.0 -
-                              (float(new_price) / original_price) * 100.0))
+                        round(
+                            100.0 - (float(new_price) / original_price) * 100.0
+                        )
+                    )
                     percent_off_text = ' ' + ba.Lstr(
-                        resource='store.salePercentText').evaluate().replace(
-                            '${PERCENT}', str(percent_off))
+                        resource='store.salePercentText'
+                    ).evaluate().replace('${PERCENT}', str(percent_off))
                 else:
                     original_price_str = new_price_str = '?'
                     percent_off_text = ''
@@ -122,41 +141,51 @@ class SpecialOfferWindow(ba.Window):
 
         # If its a bundle sale, change the title.
         if self._is_bundle_sale:
-            sale_text = ba.Lstr(resource='store.saleBundleText',
-                                fallback_resource='store.saleText').evaluate()
+            sale_text = ba.Lstr(
+                resource='store.saleBundleText',
+                fallback_resource='store.saleText',
+            ).evaluate()
         else:
             # For full pro we say 'Upgrade?' since its not really a sale.
             if offer['item'] == 'pro_fullprice':
                 sale_text = ba.Lstr(
                     resource='store.upgradeQuestionText',
-                    fallback_resource='store.saleExclaimText').evaluate()
+                    fallback_resource='store.saleExclaimText',
+                ).evaluate()
             else:
                 sale_text = ba.Lstr(
                     resource='store.saleExclaimText',
-                    fallback_resource='store.saleText').evaluate()
+                    fallback_resource='store.saleText',
+                ).evaluate()
 
         self._title_text = ba.textwidget(
             parent=self._root_widget,
             position=(self._width * 0.5, self._height - 40),
             size=(0, 0),
-            text=sale_text +
-            ((' ' + ba.Lstr(resource='store.oneTimeOnlyText').evaluate())
-             if self._offer['oneTimeOnly'] else '') + percent_off_text,
+            text=sale_text
+            + (
+                (' ' + ba.Lstr(resource='store.oneTimeOnlyText').evaluate())
+                if self._offer['oneTimeOnly']
+                else ''
+            )
+            + percent_off_text,
             h_align='center',
             v_align='center',
             maxwidth=self._width * 0.9 - 220,
             scale=1.4,
-            color=(0.3, 1, 0.3))
+            color=(0.3, 1, 0.3),
+        )
 
         self._flash_on = False
-        self._flashing_timer: Optional[ba.Timer] = ba.Timer(
+        self._flashing_timer: ba.Timer | None = ba.Timer(
             0.05,
             ba.WeakCall(self._flash_cycle),
             repeat=True,
-            timetype=ba.TimeType.REAL)
-        ba.timer(0.6,
-                 ba.WeakCall(self._stop_flashing),
-                 timetype=ba.TimeType.REAL)
+            timetype=ba.TimeType.REAL,
+        )
+        ba.timer(
+            0.6, ba.WeakCall(self._stop_flashing), timetype=ba.TimeType.REAL
+        )
 
         size = get_store_item_display_size(self._offer_item)
         display: dict[str, Any] = {}
@@ -164,56 +193,69 @@ class SpecialOfferWindow(ba.Window):
             self._offer_item,
             display,
             parent_widget=self._root_widget,
-            b_pos=(self._width * 0.5 - size[0] * 0.5 + 10 -
-                   ((size[0] * 0.5 + 30) if self._is_bundle_sale else 0),
-                   self._height * 0.5 - size[1] * 0.5 + 20 +
-                   (20 if self._is_bundle_sale else 0)),
+            b_pos=(
+                self._width * 0.5
+                - size[0] * 0.5
+                + 10
+                - ((size[0] * 0.5 + 30) if self._is_bundle_sale else 0),
+                self._height * 0.5
+                - size[1] * 0.5
+                + 20
+                + (20 if self._is_bundle_sale else 0),
+            ),
             b_width=size[0],
             b_height=size[1],
-            button=not self._is_bundle_sale)
+            button=not self._is_bundle_sale,
+        )
 
         # Wire up the parts we need.
         if self._is_bundle_sale:
-            self._plus_text = ba.textwidget(parent=self._root_widget,
-                                            position=(self._width * 0.5,
-                                                      self._height * 0.5 + 50),
-                                            size=(0, 0),
-                                            text='+',
-                                            h_align='center',
-                                            v_align='center',
-                                            maxwidth=self._width * 0.9,
-                                            scale=1.4,
-                                            color=(0.5, 0.5, 0.5))
+            self._plus_text = ba.textwidget(
+                parent=self._root_widget,
+                position=(self._width * 0.5, self._height * 0.5 + 50),
+                size=(0, 0),
+                text='+',
+                h_align='center',
+                v_align='center',
+                maxwidth=self._width * 0.9,
+                scale=1.4,
+                color=(0.5, 0.5, 0.5),
+            )
             self._plus_tickets = ba.textwidget(
                 parent=self._root_widget,
                 position=(self._width * 0.5 + 120, self._height * 0.5 + 50),
                 size=(0, 0),
-                text=ba.charstr(SpecialChar.TICKET_BACKING) +
-                str(offer['bonusTickets']),
+                text=ba.charstr(SpecialChar.TICKET_BACKING)
+                + str(offer['bonusTickets']),
                 h_align='center',
                 v_align='center',
                 maxwidth=self._width * 0.9,
                 scale=2.5,
-                color=(0.2, 1, 0.2))
-            self._price_text = ba.textwidget(parent=self._root_widget,
-                                             position=(self._width * 0.5, 150),
-                                             size=(0, 0),
-                                             text=real_price,
-                                             h_align='center',
-                                             v_align='center',
-                                             maxwidth=self._width * 0.9,
-                                             scale=1.4,
-                                             color=(0.2, 1, 0.2))
+                color=(0.2, 1, 0.2),
+            )
+            self._price_text = ba.textwidget(
+                parent=self._root_widget,
+                position=(self._width * 0.5, 150),
+                size=(0, 0),
+                text=real_price,
+                h_align='center',
+                v_align='center',
+                maxwidth=self._width * 0.9,
+                scale=1.4,
+                color=(0.2, 1, 0.2),
+            )
             # Total-value if they supplied it.
             total_worth_item = offer.get('valueItem', None)
             if total_worth_item is not None:
-                price = _ba.get_price(total_worth_item)
-                total_worth_price = (get_clean_price(price)
-                                     if price is not None else None)
+                price = ba.internal.get_price(total_worth_item)
+                total_worth_price = (
+                    get_clean_price(price) if price is not None else None
+                )
                 if total_worth_price is not None:
-                    total_worth_text = ba.Lstr(resource='store.totalWorthText',
-                                               subs=[('${TOTAL_WORTH}',
-                                                      total_worth_price)])
+                    total_worth_text = ba.Lstr(
+                        resource='store.totalWorthText',
+                        subs=[('${TOTAL_WORTH}', total_worth_price)],
+                    )
                     self._total_worth_text = ba.textwidget(
                         parent=self._root_widget,
                         text=total_worth_text,
@@ -225,22 +267,27 @@ class SpecialOfferWindow(ba.Window):
                         v_align='center',
                         shadow=1.0,
                         flatness=1.0,
-                        color=(0.3, 1, 1))
+                        color=(0.3, 1, 1),
+                    )
 
         elif offer['item'] == 'pro_fullprice':
             # for full-price pro we simply show full price
             ba.textwidget(edit=display['price_widget'], text=real_price)
-            ba.buttonwidget(edit=display['button'],
-                            on_activate_call=self._purchase)
+            ba.buttonwidget(
+                edit=display['button'], on_activate_call=self._purchase
+            )
         else:
             # Show old/new prices otherwise (for pro sale).
-            ba.buttonwidget(edit=display['button'],
-                            on_activate_call=self._purchase)
+            ba.buttonwidget(
+                edit=display['button'], on_activate_call=self._purchase
+            )
             ba.imagewidget(edit=display['price_slash_widget'], opacity=1.0)
-            ba.textwidget(edit=display['price_widget_left'],
-                          text=original_price_str)
-            ba.textwidget(edit=display['price_widget_right'],
-                          text=new_price_str)
+            ba.textwidget(
+                edit=display['price_widget_left'], text=original_price_str
+            )
+            ba.textwidget(
+                edit=display['price_widget_right'], text=new_price_str
+            )
 
         # Add ticket button only if this is ticket-purchasable.
         if isinstance(offer.get('price'), int):
@@ -254,41 +301,49 @@ class SpecialOfferWindow(ba.Window):
                 textcolor=(0.2, 1, 0.2),
                 autoselect=True,
                 label=ba.Lstr(resource='getTicketsWindow.titleText'),
-                on_activate_call=self._on_get_more_tickets_press)
+                on_activate_call=self._on_get_more_tickets_press,
+            )
 
             self._ticket_text_update_timer = ba.Timer(
                 1.0,
                 ba.WeakCall(self._update_tickets_text),
                 timetype=ba.TimeType.REAL,
-                repeat=True)
+                repeat=True,
+            )
             self._update_tickets_text()
 
-        self._update_timer = ba.Timer(1.0,
-                                      ba.WeakCall(self._update),
-                                      timetype=ba.TimeType.REAL,
-                                      repeat=True)
+        self._update_timer = ba.Timer(
+            1.0,
+            ba.WeakCall(self._update),
+            timetype=ba.TimeType.REAL,
+            repeat=True,
+        )
 
         self._cancel_button = ba.buttonwidget(
             parent=self._root_widget,
-            position=(50, 40) if self._is_bundle_sale else
-            (self._width * 0.5 - 75, 40),
+            position=(50, 40)
+            if self._is_bundle_sale
+            else (self._width * 0.5 - 75, 40),
             size=(150, 60),
             scale=1.0,
             on_activate_call=self._cancel,
             autoselect=True,
-            label=ba.Lstr(resource='noThanksText'))
+            label=ba.Lstr(resource='noThanksText'),
+        )
         self._cancel_countdown_text = ba.textwidget(
             parent=self._root_widget,
             text='',
-            position=(50 + 150 + 20, 40 + 27) if self._is_bundle_sale else
-            (self._width * 0.5 - 75 + 150 + 20, 40 + 27),
+            position=(50 + 150 + 20, 40 + 27)
+            if self._is_bundle_sale
+            else (self._width * 0.5 - 75 + 150 + 20, 40 + 27),
             scale=1.1,
             size=(0, 0),
             h_align='left',
             v_align='center',
             shadow=1.0,
             flatness=1.0,
-            color=(0.6, 0.5, 0.5))
+            color=(0.6, 0.5, 0.5),
+        )
         self._update_cancel_button_graphics()
 
         if self._is_bundle_sale:
@@ -299,14 +354,19 @@ class SpecialOfferWindow(ba.Window):
                 scale=1.0,
                 on_activate_call=self._purchase,
                 autoselect=True,
-                label=ba.Lstr(resource='store.purchaseText'))
+                label=ba.Lstr(resource='store.purchaseText'),
+            )
 
-        ba.containerwidget(edit=self._root_widget,
-                           cancel_button=self._cancel_button,
-                           start_button=self._purchase_button
-                           if self._is_bundle_sale else None,
-                           selected_child=self._purchase_button
-                           if self._is_bundle_sale else display['button'])
+        ba.containerwidget(
+            edit=self._root_widget,
+            cancel_button=self._cancel_button,
+            start_button=self._purchase_button
+            if self._is_bundle_sale
+            else None,
+            selected_child=self._purchase_button
+            if self._is_bundle_sale
+            else display['button'],
+        )
 
     def _stop_flashing(self) -> None:
         self._flashing_timer = None
@@ -316,19 +376,25 @@ class SpecialOfferWindow(ba.Window):
         if not self._root_widget:
             return
         self._flash_on = not self._flash_on
-        ba.textwidget(edit=self._title_text,
-                      color=(0.3, 1, 0.3) if self._flash_on else (1, 0.5, 0))
+        ba.textwidget(
+            edit=self._title_text,
+            color=(0.3, 1, 0.3) if self._flash_on else (1, 0.5, 0),
+        )
 
     def _update_cancel_button_graphics(self) -> None:
-        ba.buttonwidget(edit=self._cancel_button,
-                        color=(0.5, 0.5, 0.5) if self._cancel_delay > 0 else
-                        (0.7, 0.4, 0.34),
-                        textcolor=(0.5, 0.5,
-                                   0.5) if self._cancel_delay > 0 else
-                        (0.9, 0.9, 1.0))
+        ba.buttonwidget(
+            edit=self._cancel_button,
+            color=(0.5, 0.5, 0.5)
+            if self._cancel_delay > 0
+            else (0.7, 0.4, 0.34),
+            textcolor=(0.5, 0.5, 0.5)
+            if self._cancel_delay > 0
+            else (0.9, 0.9, 1.0),
+        )
         ba.textwidget(
             edit=self._cancel_countdown_text,
-            text=str(self._cancel_delay) if self._cancel_delay > 0 else '')
+            text=str(self._cancel_delay) if self._cancel_delay > 0 else '',
+        )
 
     def _update(self) -> None:
 
@@ -341,10 +407,10 @@ class SpecialOfferWindow(ba.Window):
 
         # We go away if we see that our target item is owned.
         if self._offer_item == 'pro':
-            if _ba.app.accounts.have_pro():
+            if ba.app.accounts_v1.have_pro():
                 can_die = True
         else:
-            if _ba.get_purchased(self._offer_item):
+            if ba.internal.get_purchased(self._offer_item):
                 can_die = True
 
         if can_die:
@@ -361,12 +427,14 @@ class SpecialOfferWindow(ba.Window):
 
     def _update_tickets_text(self) -> None:
         from ba import SpecialChar
+
         if not self._root_widget:
             return
-        sval: Union[str, ba.Lstr]
-        if _ba.get_account_state() == 'signed_in':
-            sval = (ba.charstr(SpecialChar.TICKET) +
-                    str(_ba.get_account_ticket_count()))
+        sval: str | ba.Lstr
+        if ba.internal.get_v1_account_state() == 'signed_in':
+            sval = ba.charstr(SpecialChar.TICKET) + str(
+                ba.internal.get_v1_account_ticket_count()
+            )
         else:
             sval = ba.Lstr(resource='getTicketsWindow.titleText')
         ba.buttonwidget(edit=self._get_tickets_button, label=sval)
@@ -374,7 +442,8 @@ class SpecialOfferWindow(ba.Window):
     def _on_get_more_tickets_press(self) -> None:
         from bastd.ui import account
         from bastd.ui import getcurrency
-        if _ba.get_account_state() != 'signed_in':
+
+        if ba.internal.get_v1_account_state() != 'signed_in':
             account.show_sign_in_prompt()
             return
         getcurrency.GetCurrencyWindow(modal=True).get_root_widget()
@@ -383,40 +452,48 @@ class SpecialOfferWindow(ba.Window):
         from ba.internal import get_store_item_name_translated
         from bastd.ui import getcurrency
         from bastd.ui import confirm
+
         if self._offer['item'] == 'pro':
-            _ba.purchase('pro_sale')
+            ba.internal.purchase('pro_sale')
         elif self._offer['item'] == 'pro_fullprice':
-            _ba.purchase('pro')
+            ba.internal.purchase('pro')
         elif self._is_bundle_sale:
             # With bundle sales, the price is the name of the IAP.
-            _ba.purchase(self._offer['price'])
+            ba.internal.purchase(self._offer['price'])
         else:
-            ticket_count: Optional[int]
+            ticket_count: int | None
             try:
-                ticket_count = _ba.get_account_ticket_count()
+                ticket_count = ba.internal.get_v1_account_ticket_count()
             except Exception:
                 ticket_count = None
-            if (ticket_count is not None
-                    and ticket_count < self._offer['price']):
+            if ticket_count is not None and ticket_count < self._offer['price']:
                 getcurrency.show_get_tickets_prompt()
                 ba.playsound(ba.getsound('error'))
                 return
 
             def do_it() -> None:
-                _ba.in_game_purchase('offer:' + str(self._offer['id']),
-                                     self._offer['price'])
+                ba.internal.in_game_purchase(
+                    'offer:' + str(self._offer['id']), self._offer['price']
+                )
 
             ba.playsound(ba.getsound('swish'))
-            confirm.ConfirmWindow(ba.Lstr(
-                resource='store.purchaseConfirmText',
-                subs=[('${ITEM}',
-                       get_store_item_name_translated(self._offer['item']))]),
-                                  width=400,
-                                  height=120,
-                                  action=do_it,
-                                  ok_text=ba.Lstr(
-                                      resource='store.purchaseText',
-                                      fallback_resource='okText'))
+            confirm.ConfirmWindow(
+                ba.Lstr(
+                    resource='store.purchaseConfirmText',
+                    subs=[
+                        (
+                            '${ITEM}',
+                            get_store_item_name_translated(self._offer['item']),
+                        )
+                    ],
+                ),
+                width=400,
+                height=120,
+                action=do_it,
+                ok_text=ba.Lstr(
+                    resource='store.purchaseText', fallback_resource='okText'
+                ),
+            )
 
     def _cancel(self) -> None:
         if self._cancel_delay > 0:
@@ -429,14 +506,15 @@ def show_offer() -> bool:
     """(internal)"""
     try:
         from bastd.ui import feedback
+
         app = ba.app
 
         # Space things out a bit so we don't hit the poor user with an ad and
         # then an in-game offer.
         has_been_long_enough_since_ad = True
-        if (app.ads.last_ad_completion_time is not None and
-            (ba.time(ba.TimeType.REAL) - app.ads.last_ad_completion_time <
-             30.0)):
+        if app.ads.last_ad_completion_time is not None and (
+            ba.time(ba.TimeType.REAL) - app.ads.last_ad_completion_time < 30.0
+        ):
             has_been_long_enough_since_ad = False
 
         if app.special_offer is not None and has_been_long_enough_since_ad:
@@ -446,8 +524,8 @@ def show_offer() -> bool:
             if app.special_offer.get('item') == 'pro_fullprice':
                 cfg = app.config
                 cfg['pendingSpecialOffer'] = {
-                    'a': _ba.get_public_login_id(),
-                    'o': app.special_offer
+                    'a': ba.internal.get_public_login_id(),
+                    'o': app.special_offer,
                 }
                 cfg.commit()
 

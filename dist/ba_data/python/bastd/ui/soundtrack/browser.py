@@ -7,24 +7,26 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING
 
-import _ba
 import ba
+import ba.internal
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
 
 
 class SoundtrackBrowserWindow(ba.Window):
     """Window for browsing soundtracks."""
 
-    def __init__(self,
-                 transition: str = 'in_right',
-                 origin_widget: ba.Widget = None):
+    def __init__(
+        self,
+        transition: str = 'in_right',
+        origin_widget: ba.Widget | None = None,
+    ):
         # pylint: disable=too-many-locals
         # pylint: disable=too-many-statements
 
         # If they provided an origin-widget, scale up from that.
-        scale_origin: Optional[tuple[float, float]]
+        scale_origin: tuple[float, float] | None
         if origin_widget is not None:
             self._transition_out = 'out_scale'
             scale_origin = origin_widget.get_screen_space_center()
@@ -37,20 +39,35 @@ class SoundtrackBrowserWindow(ba.Window):
         uiscale = ba.app.ui.uiscale
         self._width = 800 if uiscale is ba.UIScale.SMALL else 600
         x_inset = 100 if uiscale is ba.UIScale.SMALL else 0
-        self._height = (340 if uiscale is ba.UIScale.SMALL else
-                        370 if uiscale is ba.UIScale.MEDIUM else 440)
+        self._height = (
+            340
+            if uiscale is ba.UIScale.SMALL
+            else 370
+            if uiscale is ba.UIScale.MEDIUM
+            else 440
+        )
         spacing = 40.0
         v = self._height - 40.0
         v -= spacing * 1.0
 
-        super().__init__(root_widget=ba.containerwidget(
-            size=(self._width, self._height),
-            transition=transition,
-            toolbar_visibility='menu_minimal',
-            scale_origin_stack_offset=scale_origin,
-            scale=(2.3 if uiscale is ba.UIScale.SMALL else
-                   1.6 if uiscale is ba.UIScale.MEDIUM else 1.0),
-            stack_offset=(0, -18) if uiscale is ba.UIScale.SMALL else (0, 0)))
+        super().__init__(
+            root_widget=ba.containerwidget(
+                size=(self._width, self._height),
+                transition=transition,
+                toolbar_visibility='menu_minimal',
+                scale_origin_stack_offset=scale_origin,
+                scale=(
+                    2.3
+                    if uiscale is ba.UIScale.SMALL
+                    else 1.6
+                    if uiscale is ba.UIScale.MEDIUM
+                    else 1.0
+                ),
+                stack_offset=(0, -18)
+                if uiscale is ba.UIScale.SMALL
+                else (0, 0),
+            )
+        )
 
         if ba.app.ui.use_toolbars and uiscale is ba.UIScale.SMALL:
             self._back_button = None
@@ -62,19 +79,24 @@ class SoundtrackBrowserWindow(ba.Window):
                 scale=0.8,
                 label=ba.Lstr(resource='backText'),
                 button_type='back',
-                autoselect=True)
-            ba.buttonwidget(edit=self._back_button,
-                            button_type='backSmall',
-                            size=(60, 60),
-                            label=ba.charstr(ba.SpecialChar.BACK))
-        ba.textwidget(parent=self._root_widget,
-                      position=(self._width * 0.5, self._height - 35),
-                      size=(0, 0),
-                      maxwidth=300,
-                      text=ba.Lstr(resource=self._r + '.titleText'),
-                      color=ba.app.ui.title_color,
-                      h_align='center',
-                      v_align='center')
+                autoselect=True,
+            )
+            ba.buttonwidget(
+                edit=self._back_button,
+                button_type='backSmall',
+                size=(60, 60),
+                label=ba.charstr(ba.SpecialChar.BACK),
+            )
+        ba.textwidget(
+            parent=self._root_widget,
+            position=(self._width * 0.5, self._height - 35),
+            size=(0, 0),
+            maxwidth=300,
+            text=ba.Lstr(resource=self._r + '.titleText'),
+            color=ba.app.ui.title_color,
+            h_align='center',
+            v_align='center',
+        )
 
         h = 43 + x_inset
         v = self._height - 60
@@ -83,8 +105,13 @@ class SoundtrackBrowserWindow(ba.Window):
         lock_tex = ba.gettexture('lock')
         self._lock_images: list[ba.Widget] = []
 
-        scl = (1.0 if uiscale is ba.UIScale.SMALL else
-               1.13 if uiscale is ba.UIScale.MEDIUM else 1.4)
+        scl = (
+            1.0
+            if uiscale is ba.UIScale.SMALL
+            else 1.13
+            if uiscale is ba.UIScale.MEDIUM
+            else 1.4
+        )
         v -= 60.0 * scl
         self._new_button = btn = ba.buttonwidget(
             parent=self._root_widget,
@@ -96,17 +123,23 @@ class SoundtrackBrowserWindow(ba.Window):
             autoselect=True,
             textcolor=b_textcolor,
             text_scale=0.7,
-            label=ba.Lstr(resource=self._r + '.newText'))
+            label=ba.Lstr(resource=self._r + '.newText'),
+        )
         self._lock_images.append(
-            ba.imagewidget(parent=self._root_widget,
-                           size=(30, 30),
-                           draw_controller=btn,
-                           position=(h - 10, v + 55.0 * scl - 28),
-                           texture=lock_tex))
+            ba.imagewidget(
+                parent=self._root_widget,
+                size=(30, 30),
+                draw_controller=btn,
+                position=(h - 10, v + 55.0 * scl - 28),
+                texture=lock_tex,
+            )
+        )
 
         if self._back_button is None:
-            ba.widget(edit=btn,
-                      left_widget=_ba.get_special_widget('back_button'))
+            ba.widget(
+                edit=btn,
+                left_widget=ba.internal.get_special_widget('back_button'),
+            )
         v -= 60.0 * scl
 
         self._edit_button = btn = ba.buttonwidget(
@@ -119,16 +152,22 @@ class SoundtrackBrowserWindow(ba.Window):
             autoselect=True,
             textcolor=b_textcolor,
             text_scale=0.7,
-            label=ba.Lstr(resource=self._r + '.editText'))
+            label=ba.Lstr(resource=self._r + '.editText'),
+        )
         self._lock_images.append(
-            ba.imagewidget(parent=self._root_widget,
-                           size=(30, 30),
-                           draw_controller=btn,
-                           position=(h - 10, v + 55.0 * scl - 28),
-                           texture=lock_tex))
+            ba.imagewidget(
+                parent=self._root_widget,
+                size=(30, 30),
+                draw_controller=btn,
+                position=(h - 10, v + 55.0 * scl - 28),
+                texture=lock_tex,
+            )
+        )
         if self._back_button is None:
-            ba.widget(edit=btn,
-                      left_widget=_ba.get_special_widget('back_button'))
+            ba.widget(
+                edit=btn,
+                left_widget=ba.internal.get_special_widget('back_button'),
+            )
         v -= 60.0 * scl
 
         self._duplicate_button = btn = ba.buttonwidget(
@@ -141,16 +180,22 @@ class SoundtrackBrowserWindow(ba.Window):
             color=b_color,
             textcolor=b_textcolor,
             text_scale=0.7,
-            label=ba.Lstr(resource=self._r + '.duplicateText'))
+            label=ba.Lstr(resource=self._r + '.duplicateText'),
+        )
         self._lock_images.append(
-            ba.imagewidget(parent=self._root_widget,
-                           size=(30, 30),
-                           draw_controller=btn,
-                           position=(h - 10, v + 55.0 * scl - 28),
-                           texture=lock_tex))
+            ba.imagewidget(
+                parent=self._root_widget,
+                size=(30, 30),
+                draw_controller=btn,
+                position=(h - 10, v + 55.0 * scl - 28),
+                texture=lock_tex,
+            )
+        )
         if self._back_button is None:
-            ba.widget(edit=btn,
-                      left_widget=_ba.get_special_widget('back_button'))
+            ba.widget(
+                edit=btn,
+                left_widget=ba.internal.get_special_widget('back_button'),
+            )
         v -= 60.0 * scl
 
         self._delete_button = btn = ba.buttonwidget(
@@ -163,22 +208,30 @@ class SoundtrackBrowserWindow(ba.Window):
             autoselect=True,
             textcolor=b_textcolor,
             text_scale=0.7,
-            label=ba.Lstr(resource=self._r + '.deleteText'))
+            label=ba.Lstr(resource=self._r + '.deleteText'),
+        )
         self._lock_images.append(
-            ba.imagewidget(parent=self._root_widget,
-                           size=(30, 30),
-                           draw_controller=btn,
-                           position=(h - 10, v + 55.0 * scl - 28),
-                           texture=lock_tex))
+            ba.imagewidget(
+                parent=self._root_widget,
+                size=(30, 30),
+                draw_controller=btn,
+                position=(h - 10, v + 55.0 * scl - 28),
+                texture=lock_tex,
+            )
+        )
         if self._back_button is None:
-            ba.widget(edit=btn,
-                      left_widget=_ba.get_special_widget('back_button'))
+            ba.widget(
+                edit=btn,
+                left_widget=ba.internal.get_special_widget('back_button'),
+            )
 
         # Keep our lock images up to date/etc.
-        self._update_timer = ba.Timer(1.0,
-                                      ba.WeakCall(self._update),
-                                      timetype=ba.TimeType.REAL,
-                                      repeat=True)
+        self._update_timer = ba.Timer(
+            1.0,
+            ba.WeakCall(self._update),
+            timetype=ba.TimeType.REAL,
+            repeat=True,
+        )
         self._update()
 
         v = self._height - 65
@@ -188,30 +241,35 @@ class SoundtrackBrowserWindow(ba.Window):
             parent=self._root_widget,
             position=(152 + x_inset, v),
             highlight=False,
-            size=(self._width - (205 + 2 * x_inset), scroll_height))
-        ba.widget(edit=self._scrollwidget,
-                  left_widget=self._new_button,
-                  right_widget=_ba.get_special_widget('party_button')
-                  if ba.app.ui.use_toolbars else self._scrollwidget)
+            size=(self._width - (205 + 2 * x_inset), scroll_height),
+        )
+        ba.widget(
+            edit=self._scrollwidget,
+            left_widget=self._new_button,
+            right_widget=ba.internal.get_special_widget('party_button')
+            if ba.app.ui.use_toolbars
+            else self._scrollwidget,
+        )
         self._col = ba.columnwidget(parent=scrollwidget, border=2, margin=0)
 
-        self._soundtracks: Optional[dict[str, Any]] = None
-        self._selected_soundtrack: Optional[str] = None
-        self._selected_soundtrack_index: Optional[int] = None
+        self._soundtracks: dict[str, Any] | None = None
+        self._selected_soundtrack: str | None = None
+        self._selected_soundtrack_index: int | None = None
         self._soundtrack_widgets: list[ba.Widget] = []
         self._allow_changing_soundtracks = False
         self._refresh()
         if self._back_button is not None:
-            ba.buttonwidget(edit=self._back_button,
-                            on_activate_call=self._back)
-            ba.containerwidget(edit=self._root_widget,
-                               cancel_button=self._back_button)
+            ba.buttonwidget(edit=self._back_button, on_activate_call=self._back)
+            ba.containerwidget(
+                edit=self._root_widget, cancel_button=self._back_button
+            )
         else:
-            ba.containerwidget(edit=self._root_widget,
-                               on_cancel_call=self._back)
+            ba.containerwidget(
+                edit=self._root_widget, on_cancel_call=self._back
+            )
 
     def _update(self) -> None:
-        have = ba.app.accounts.have_pro_options()
+        have = ba.app.accounts_v1.have_pro_options()
         for lock in self._lock_images:
             ba.imagewidget(edit=lock, opacity=0.0 if have else 1.0)
 
@@ -232,26 +290,34 @@ class SoundtrackBrowserWindow(ba.Window):
         # pylint: disable=cyclic-import
         from bastd.ui.purchase import PurchaseWindow
         from bastd.ui.confirm import ConfirmWindow
-        if not ba.app.accounts.have_pro_options():
+
+        if not ba.app.accounts_v1.have_pro_options():
             PurchaseWindow(items=['pro'])
             return
         if self._selected_soundtrack is None:
             return
         if self._selected_soundtrack == '__default__':
             ba.playsound(ba.getsound('error'))
-            ba.screenmessage(ba.Lstr(resource=self._r +
-                                     '.cantDeleteDefaultText'),
-                             color=(1, 0, 0))
+            ba.screenmessage(
+                ba.Lstr(resource=self._r + '.cantDeleteDefaultText'),
+                color=(1, 0, 0),
+            )
         else:
             ConfirmWindow(
-                ba.Lstr(resource=self._r + '.deleteConfirmText',
-                        subs=[('${NAME}', self._selected_soundtrack)]),
-                self._do_delete_soundtrack, 450, 150)
+                ba.Lstr(
+                    resource=self._r + '.deleteConfirmText',
+                    subs=[('${NAME}', self._selected_soundtrack)],
+                ),
+                self._do_delete_soundtrack,
+                450,
+                150,
+            )
 
     def _duplicate_soundtrack(self) -> None:
         # pylint: disable=cyclic-import
         from bastd.ui.purchase import PurchaseWindow
-        if not ba.app.accounts.have_pro_options():
+
+        if not ba.app.accounts_v1.have_pro_options():
             PurchaseWindow(items=['pro'])
             return
         cfg = ba.app.config
@@ -271,7 +337,8 @@ class SoundtrackBrowserWindow(ba.Window):
         # Get just 'Copy' or whatnot.
         copy_word = copy_text.replace('${NAME}', '').strip()
         base_name = self._get_soundtrack_display_name(
-            self._selected_soundtrack).evaluate()
+            self._selected_soundtrack
+        ).evaluate()
         assert isinstance(base_name, str)
 
         # If it looks like a copy, strip digits and spaces off the end.
@@ -313,16 +380,20 @@ class SoundtrackBrowserWindow(ba.Window):
     def _back(self) -> None:
         # pylint: disable=cyclic-import
         from bastd.ui.settings import audio
+
         self._save_state()
-        ba.containerwidget(edit=self._root_widget,
-                           transition=self._transition_out)
+        ba.containerwidget(
+            edit=self._root_widget, transition=self._transition_out
+        )
         ba.app.ui.set_main_menu_window(
-            audio.AudioSettingsWindow(transition='in_left').get_root_widget())
+            audio.AudioSettingsWindow(transition='in_left').get_root_widget()
+        )
 
     def _edit_soundtrack_with_sound(self) -> None:
         # pylint: disable=cyclic-import
         from bastd.ui.purchase import PurchaseWindow
-        if not ba.app.accounts.have_pro_options():
+
+        if not ba.app.accounts_v1.have_pro_options():
             PurchaseWindow(items=['pro'])
             return
         ba.playsound(ba.getsound('swish'))
@@ -332,31 +403,36 @@ class SoundtrackBrowserWindow(ba.Window):
         # pylint: disable=cyclic-import
         from bastd.ui.purchase import PurchaseWindow
         from bastd.ui.soundtrack.edit import SoundtrackEditWindow
-        if not ba.app.accounts.have_pro_options():
+
+        if not ba.app.accounts_v1.have_pro_options():
             PurchaseWindow(items=['pro'])
             return
         if self._selected_soundtrack is None:
             return
         if self._selected_soundtrack == '__default__':
             ba.playsound(ba.getsound('error'))
-            ba.screenmessage(ba.Lstr(resource=self._r +
-                                     '.cantEditDefaultText'),
-                             color=(1, 0, 0))
+            ba.screenmessage(
+                ba.Lstr(resource=self._r + '.cantEditDefaultText'),
+                color=(1, 0, 0),
+            )
             return
 
         self._save_state()
         ba.containerwidget(edit=self._root_widget, transition='out_left')
         ba.app.ui.set_main_menu_window(
-            SoundtrackEditWindow(existing_soundtrack=self._selected_soundtrack
-                                 ).get_root_widget())
+            SoundtrackEditWindow(
+                existing_soundtrack=self._selected_soundtrack
+            ).get_root_widget()
+        )
 
     def _get_soundtrack_display_name(self, soundtrack: str) -> ba.Lstr:
         if soundtrack == '__default__':
             return ba.Lstr(resource=self._r + '.defaultSoundtrackNameText')
         return ba.Lstr(value=soundtrack)
 
-    def _refresh(self, select_soundtrack: str = None) -> None:
+    def _refresh(self, select_soundtrack: str | None = None) -> None:
         from efro.util import asserttype
+
         self._allow_changing_soundtracks = False
         old_selection = self._selected_soundtrack
 
@@ -387,7 +463,8 @@ class SoundtrackBrowserWindow(ba.Window):
                 always_highlight=True,
                 on_select_call=ba.WeakCall(self._select, pname, index),
                 on_activate_call=self._edit_soundtrack_with_sound,
-                selectable=True)
+                selectable=True,
+            )
             if index == 0:
                 ba.widget(edit=txtw, up_widget=self._back_button)
             self._soundtrack_widgets.append(txtw)
@@ -395,22 +472,26 @@ class SoundtrackBrowserWindow(ba.Window):
             # Select this one if the user requested it
             if select_soundtrack is not None:
                 if pname == select_soundtrack:
-                    ba.columnwidget(edit=self._col,
-                                    selected_child=txtw,
-                                    visible_child=txtw)
+                    ba.columnwidget(
+                        edit=self._col, selected_child=txtw, visible_child=txtw
+                    )
             else:
                 # Select this one if it was previously selected.
                 # Go by index if there's one.
                 if old_selection_index is not None:
                     if index == old_selection_index:
-                        ba.columnwidget(edit=self._col,
-                                        selected_child=txtw,
-                                        visible_child=txtw)
+                        ba.columnwidget(
+                            edit=self._col,
+                            selected_child=txtw,
+                            visible_child=txtw,
+                        )
                 else:  # Otherwise look by name.
                     if pname == old_selection:
-                        ba.columnwidget(edit=self._col,
-                                        selected_child=txtw,
-                                        visible_child=txtw)
+                        ba.columnwidget(
+                            edit=self._col,
+                            selected_child=txtw,
+                            visible_child=txtw,
+                        )
             index += 1
 
         # Explicitly run select callback on current one and re-enable
@@ -419,22 +500,24 @@ class SoundtrackBrowserWindow(ba.Window):
         # Eww need to run this in a timer so it happens after our select
         # callbacks. With a small-enough time sometimes it happens before
         # anyway. Ew. need a way to just schedule a callable i guess.
-        ba.timer(0.1,
-                 ba.WeakCall(self._set_allow_changing),
-                 timetype=ba.TimeType.REAL)
+        ba.timer(
+            0.1,
+            ba.WeakCall(self._set_allow_changing),
+            timetype=ba.TimeType.REAL,
+        )
 
     def _set_allow_changing(self) -> None:
         self._allow_changing_soundtracks = True
         assert self._selected_soundtrack is not None
         assert self._selected_soundtrack_index is not None
-        self._select(self._selected_soundtrack,
-                     self._selected_soundtrack_index)
+        self._select(self._selected_soundtrack, self._selected_soundtrack_index)
 
     def _new_soundtrack(self) -> None:
         # pylint: disable=cyclic-import
         from bastd.ui.purchase import PurchaseWindow
         from bastd.ui.soundtrack.edit import SoundtrackEditWindow
-        if not ba.app.accounts.have_pro_options():
+
+        if not ba.app.accounts_v1.have_pro_options():
             PurchaseWindow(items=['pro'])
             return
         self._save_state()

@@ -5,77 +5,78 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import _ba
 import ba
+import ba.internal
 
 if TYPE_CHECKING:
-    from typing import Optional
+    pass
 
 
 def get_appearances(include_locked: bool = False) -> list[str]:
     """Get the list of available spaz appearances."""
     # pylint: disable=too-many-statements
     # pylint: disable=too-many-branches
+    get_purchased = ba.internal.get_purchased
     disallowed = []
     if not include_locked:
         # hmm yeah this'll be tough to hack...
-        if not _ba.get_purchased('characters.santa'):
+        if not get_purchased('characters.santa'):
             disallowed.append('Santa Claus')
-        if not _ba.get_purchased('characters.frosty'):
+        if not get_purchased('characters.frosty'):
             disallowed.append('Frosty')
-        if not _ba.get_purchased('characters.bones'):
+        if not get_purchased('characters.bones'):
             disallowed.append('Bones')
-        if not _ba.get_purchased('characters.bernard'):
+        if not get_purchased('characters.bernard'):
             disallowed.append('Bernard')
-        if not _ba.get_purchased('characters.pixie'):
+        if not get_purchased('characters.pixie'):
             disallowed.append('Pixel')
-        if not _ba.get_purchased('characters.pascal'):
+        if not get_purchased('characters.pascal'):
             disallowed.append('Pascal')
-        if not _ba.get_purchased('characters.actionhero'):
+        if not get_purchased('characters.actionhero'):
             disallowed.append('Todd McBurton')
-        if not _ba.get_purchased('characters.taobaomascot'):
+        if not get_purchased('characters.taobaomascot'):
             disallowed.append('Taobao Mascot')
-        if not _ba.get_purchased('characters.agent'):
+        if not get_purchased('characters.agent'):
             disallowed.append('Agent Johnson')
-        if not _ba.get_purchased('characters.jumpsuit'):
+        if not get_purchased('characters.jumpsuit'):
             disallowed.append('Lee')
-        if not _ba.get_purchased('characters.assassin'):
+        if not get_purchased('characters.assassin'):
             disallowed.append('Zola')
-        if not _ba.get_purchased('characters.wizard'):
+        if not get_purchased('characters.wizard'):
             disallowed.append('Grumbledorf')
-        if not _ba.get_purchased('characters.cowboy'):
+        if not get_purchased('characters.cowboy'):
             disallowed.append('Butch')
-        if not _ba.get_purchased('characters.witch'):
+        if not get_purchased('characters.witch'):
             disallowed.append('Witch')
-        if not _ba.get_purchased('characters.warrior'):
+        if not get_purchased('characters.warrior'):
             disallowed.append('Warrior')
-        if not _ba.get_purchased('characters.superhero'):
+        if not get_purchased('characters.superhero'):
             disallowed.append('Middle-Man')
-        if not _ba.get_purchased('characters.alien'):
+        if not get_purchased('characters.alien'):
             disallowed.append('Alien')
-        if not _ba.get_purchased('characters.oldlady'):
+        if not get_purchased('characters.oldlady'):
             disallowed.append('OldLady')
-        if not _ba.get_purchased('characters.gladiator'):
+        if not get_purchased('characters.gladiator'):
             disallowed.append('Gladiator')
-        if not _ba.get_purchased('characters.wrestler'):
+        if not get_purchased('characters.wrestler'):
             disallowed.append('Wrestler')
-        if not _ba.get_purchased('characters.operasinger'):
+        if not get_purchased('characters.operasinger'):
             disallowed.append('Gretel')
-        if not _ba.get_purchased('characters.robot'):
+        if not get_purchased('characters.robot'):
             disallowed.append('Robot')
-        if not _ba.get_purchased('characters.cyborg'):
+        if not get_purchased('characters.cyborg'):
             disallowed.append('B-9000')
-        if not _ba.get_purchased('characters.bunny'):
+        if not get_purchased('characters.bunny'):
             disallowed.append('Easter Bunny')
-        if not _ba.get_purchased('characters.kronk'):
+        if not get_purchased('characters.kronk'):
             disallowed.append('Kronk')
-        if not _ba.get_purchased('characters.zoe'):
+        if not get_purchased('characters.zoe'):
             disallowed.append('Zoe')
-        if not _ba.get_purchased('characters.jackmorgan'):
+        if not get_purchased('characters.jackmorgan'):
             disallowed.append('Jack Morgan')
-        if not _ba.get_purchased('characters.mel'):
+        if not get_purchased('characters.mel'):
             disallowed.append('Mel')
-        if not _ba.get_purchased('characters.snakeshadow'):
+        if not get_purchased('characters.snakeshadow'):
             disallowed.append('Snake Shadow')
     return [
         s for s in list(ba.app.spaz_appearances.keys()) if s not in disallowed
@@ -88,8 +89,9 @@ class Appearance:
     def __init__(self, name: str):
         self.name = name
         if self.name in ba.app.spaz_appearances:
-            raise Exception('spaz appearance name "' + self.name +
-                            '" already exists.')
+            raise Exception(
+                'spaz appearance name "' + self.name + '" already exists.'
+            )
         ba.app.spaz_appearances[self.name] = self
         self.color_texture = ''
         self.color_mask_texture = ''
@@ -111,8 +113,8 @@ class Appearance:
         self.pickup_sounds: list[str] = []
         self.fall_sounds: list[str] = []
         self.style = 'spaz'
-        self.default_color: Optional[tuple[float, float, float]] = None
-        self.default_highlight: Optional[tuple[float, float, float]] = None
+        self.default_color: tuple[float, float, float] | None = None
+        self.default_highlight: tuple[float, float, float] | None = None
 
 
 def register_appearances() -> None:
@@ -140,10 +142,16 @@ def register_appearances() -> None:
     t.toes_model = 'neoSpazToes'
     t.jump_sounds = ['spazJump01', 'spazJump02', 'spazJump03', 'spazJump04']
     t.attack_sounds = [
-        'spazAttack01', 'spazAttack02', 'spazAttack03', 'spazAttack04'
+        'spazAttack01',
+        'spazAttack02',
+        'spazAttack03',
+        'spazAttack04',
     ]
     t.impact_sounds = [
-        'spazImpact01', 'spazImpact02', 'spazImpact03', 'spazImpact04'
+        'spazImpact01',
+        'spazImpact02',
+        'spazImpact03',
+        'spazImpact04',
     ]
     t.death_sounds = ['spazDeath01']
     t.pickup_sounds = ['spazPickup01']
@@ -169,10 +177,16 @@ def register_appearances() -> None:
     t.toes_model = 'zoeToes'
     t.jump_sounds = ['zoeJump01', 'zoeJump02', 'zoeJump03']
     t.attack_sounds = [
-        'zoeAttack01', 'zoeAttack02', 'zoeAttack03', 'zoeAttack04'
+        'zoeAttack01',
+        'zoeAttack02',
+        'zoeAttack03',
+        'zoeAttack04',
     ]
     t.impact_sounds = [
-        'zoeImpact01', 'zoeImpact02', 'zoeImpact03', 'zoeImpact04'
+        'zoeImpact01',
+        'zoeImpact02',
+        'zoeImpact03',
+        'zoeImpact04',
     ]
     t.death_sounds = ['zoeDeath01']
     t.pickup_sounds = ['zoePickup01']
@@ -225,8 +239,16 @@ def register_appearances() -> None:
     t.lower_leg_model = 'kronkLowerLeg'
     t.toes_model = 'kronkToes'
     kronk_sounds = [
-        'kronk1', 'kronk2', 'kronk3', 'kronk4', 'kronk5', 'kronk6', 'kronk7',
-        'kronk8', 'kronk9', 'kronk10'
+        'kronk1',
+        'kronk2',
+        'kronk3',
+        'kronk4',
+        'kronk5',
+        'kronk6',
+        'kronk7',
+        'kronk8',
+        'kronk9',
+        'kronk10',
     ]
     t.jump_sounds = kronk_sounds
     t.attack_sounds = kronk_sounds
@@ -254,8 +276,16 @@ def register_appearances() -> None:
     t.lower_leg_model = 'melLowerLeg'
     t.toes_model = 'melToes'
     mel_sounds = [
-        'mel01', 'mel02', 'mel03', 'mel04', 'mel05', 'mel06', 'mel07', 'mel08',
-        'mel09', 'mel10'
+        'mel01',
+        'mel02',
+        'mel03',
+        'mel04',
+        'mel05',
+        'mel06',
+        'mel07',
+        'mel08',
+        'mel09',
+        'mel10',
     ]
     t.attack_sounds = mel_sounds
     t.jump_sounds = mel_sounds
@@ -283,8 +313,13 @@ def register_appearances() -> None:
     t.lower_leg_model = 'jackLowerLeg'
     t.toes_model = 'jackToes'
     hit_sounds = [
-        'jackHit01', 'jackHit02', 'jackHit03', 'jackHit04', 'jackHit05',
-        'jackHit06', 'jackHit07'
+        'jackHit01',
+        'jackHit02',
+        'jackHit03',
+        'jackHit04',
+        'jackHit05',
+        'jackHit06',
+        'jackHit07',
     ]
     sounds = ['jack01', 'jack02', 'jack03', 'jack04', 'jack05', 'jack06']
     t.attack_sounds = sounds
@@ -339,9 +374,7 @@ def register_appearances() -> None:
     t.upper_leg_model = 'frostyUpperLeg'
     t.lower_leg_model = 'frostyLowerLeg'
     t.toes_model = 'frostyToes'
-    frosty_sounds = [
-        'frosty01', 'frosty02', 'frosty03', 'frosty04', 'frosty05'
-    ]
+    frosty_sounds = ['frosty01', 'frosty02', 'frosty03', 'frosty04', 'frosty05']
     frosty_hit_sounds = ['frostyHit01', 'frostyHit02', 'frostyHit03']
     t.attack_sounds = frosty_sounds
     t.jump_sounds = frosty_sounds
@@ -557,7 +590,10 @@ def register_appearances() -> None:
     t.lower_leg_model = 'actionHeroLowerLeg'
     t.toes_model = 'actionHeroToes'
     action_hero_sounds = [
-        'actionHero1', 'actionHero2', 'actionHero3', 'actionHero4'
+        'actionHero1',
+        'actionHero2',
+        'actionHero3',
+        'actionHero4',
     ]
     action_hero_hit_sounds = ['actionHeroHit1', 'actionHeroHit2']
     t.attack_sounds = action_hero_sounds
@@ -856,7 +892,10 @@ def register_appearances() -> None:
     t.lower_leg_model = 'operaSingerLowerLeg'
     t.toes_model = 'operaSingerToes'
     opera_singer_sounds = [
-        'operaSinger1', 'operaSinger2', 'operaSinger3', 'operaSinger4'
+        'operaSinger1',
+        'operaSinger2',
+        'operaSinger3',
+        'operaSinger4',
     ]
     opera_singer_hit_sounds = ['operaSingerHit1', 'operaSingerHit2']
     t.attack_sounds = opera_singer_sounds

@@ -1,14 +1,17 @@
 
 from playersData import pdata
 import ba, setting
+from stats import mystats
+sett = setting.get_settings_data()
 def addtag(node,player):
     session_player=player.sessionplayer
-    account_id=session_player.get_account_id()
+    account_id=session_player.get_v1_account_id()
     customtag_=pdata.get_custom()
     customtag=customtag_['customtag']
     roles=pdata.get_roles()
     p_roles=pdata.get_player_roles(account_id)
     tag=None
+    col=(0.5,0.5,1) # default color for custom tags
     if account_id in customtag:
         tag=customtag[account_id]
     elif p_roles !=[]:
@@ -16,14 +19,15 @@ def addtag(node,player):
 
             if role in p_roles:
                 tag=roles[role]['tag']
+                col=roles[role]['tagcolor']
                 break;
     if tag:
-        Tag(node,tag)
+        Tag(node,tag,col)
 
-from stats import mystats
+
 def addrank(node,player):
 	session_player=player.sessionplayer
-	account_id=session_player.get_account_id()
+	account_id=session_player.get_v1_account_id()
 	rank=mystats.getRank(account_id)
 
 	if rank:
@@ -31,14 +35,14 @@ def addrank(node,player):
 
 def addhp(node):
     hp = node.hitpoints
-    _set = setting.get_settings_data()
     def showHP():
         HitPoint(owner=node,prefix=str(int(hp)),position=(0,0.75,0),shad = 1.4)
     if hp: t = ba.Timer(100,ba.Call(showHP),repeat = True, timetype=ba.TimeType.SIM, timeformat=ba.TimeFormat.MILLISECONDS)
 
 class Tag(object):
-	def __init__(self,owner=None,tag="somthing"):
+	def __init__(self,owner=None,tag="somthing",col=(1,1,1)):
 		self.node=owner
+		
 		mnode = ba.newnode('math',
                                owner=self.node,
                                attrs={
@@ -72,12 +76,21 @@ class Tag(object):
                                               'in_world': True,
                                               'shadow': 1.0,
                                               'flatness': 1.0,
-                                              'color': (1,0.6,0.7),
+                                              'color': tuple(col),
                                               'scale': 0.01,
                                               'h_align': 'center'
                                           })
 		mnode.connectattr('output', self.tag_text, 'position')
-
+		if sett["enableTagAnimation"]:
+			ba.animate_array(node=self.tag_text, attr='color', size=3, keys={
+				0.2: (2,0,2),
+				0.4: (2,2,0),
+				0.6: (0,2,2),
+				0.8: (2,0,2),
+				1.0: (1,1,0),
+				1.2: (0,1,1),
+				1.4: (1,0,1)
+			}, loop=True)
 class Rank(object):
 	def __init__(self,owner=None,rank=99):
 		self.node=owner
@@ -103,8 +116,7 @@ class Rank(object):
 
 class HitPoint(object):
     def __init__(self,position = (0,1.5,0),owner = None,prefix = 'ADMIN',shad = 1.2):
-        _set = setting.get_settings_data()
-        if not _set['enablehptag']: return
+        if not sett['enablehptag']: return
         self.position = position
         self.owner = owner
         m = ba.newnode('math', owner=self.owner, attrs={'input1': self.position, 'operation': 'add'})

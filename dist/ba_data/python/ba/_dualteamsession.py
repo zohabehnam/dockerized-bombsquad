@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class DualTeamSession(MultiTeamSession):
     """ba.Session type for teams mode games.
 
-    Category: Gameplay Classes
+    Category: **Gameplay Classes**
     """
 
     # Base class overrides:
@@ -33,10 +33,11 @@ class DualTeamSession(MultiTeamSession):
     def _switch_to_score_screen(self, results: ba.GameResults) -> None:
         # pylint: disable=cyclic-import
         from bastd.activity.drawscore import DrawScoreScreenActivity
-        from bastd.activity.dualteamscore import (
-            TeamVictoryScoreScreenActivity)
+        from bastd.activity.dualteamscore import TeamVictoryScoreScreenActivity
         from bastd.activity.multiteamvictory import (
-            TeamSeriesVictoryScoreScreenActivity)
+            TeamSeriesVictoryScoreScreenActivity,
+        )
+
         winnergroups = results.winnergroups
 
         # If everyone has the same score, call it a draw.
@@ -49,9 +50,13 @@ class DualTeamSession(MultiTeamSession):
             # If a team has won, show final victory screen.
             if winner.customdata['score'] >= (self._series_length - 1) / 2 + 1:
                 self.setactivity(
-                    _ba.newactivity(TeamSeriesVictoryScoreScreenActivity,
-                                    {'winner': winner}))
+                    _ba.newactivity(
+                        TeamSeriesVictoryScoreScreenActivity, {'winner': winner}
+                    )
+                )
             else:
                 self.setactivity(
-                    _ba.newactivity(TeamVictoryScoreScreenActivity,
-                                    {'winner': winner}))
+                    _ba.newactivity(
+                        TeamVictoryScoreScreenActivity, {'winner': winner}
+                    )
+                )

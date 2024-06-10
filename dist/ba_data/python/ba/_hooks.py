@@ -16,20 +16,20 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import _ba
+from ba import _internal
 
 if TYPE_CHECKING:
-    from typing import Sequence, Optional, Any
+    from typing import Sequence, Any
     import ba
 
 
 def finish_bootstrapping() -> None:
     """Do final bootstrapping related bits."""
-    from ba._asyncio import setup_asyncio
-    assert _ba.in_game_thread()
+    assert _ba.in_logic_thread()
 
     # Kick off our asyncio event handling, allowing us to use coroutines
-    # in our game thread alongside our internal event handling.
-    setup_asyncio()
+    # in our logic thread alongside our internal event handling.
+    # setup_asyncio()
 
     # Ok, bootstrapping is done; time to get the show started.
     _ba.app.on_app_launch()
@@ -54,82 +54,113 @@ def set_config_fullscreen_off() -> None:
 
 def not_signed_in_screen_message() -> None:
     from ba._language import Lstr
+
     _ba.screenmessage(Lstr(resource='notSignedInErrorText'))
 
 
 def connecting_to_party_message() -> None:
     from ba._language import Lstr
-    _ba.screenmessage(Lstr(resource='internal.connectingToPartyText'),
-                      color=(1, 1, 1))
+
+    _ba.screenmessage(
+        Lstr(resource='internal.connectingToPartyText'), color=(1, 1, 1)
+    )
 
 
 def rejecting_invite_already_in_party_message() -> None:
     from ba._language import Lstr
+
     _ba.screenmessage(
         Lstr(resource='internal.rejectingInviteAlreadyInPartyText'),
-        color=(1, 0.5, 0))
+        color=(1, 0.5, 0),
+    )
 
 
 def connection_failed_message() -> None:
     from ba._language import Lstr
-    _ba.screenmessage(Lstr(resource='internal.connectionFailedText'),
-                      color=(1, 0.5, 0))
+
+    _ba.screenmessage(
+        Lstr(resource='internal.connectionFailedText'), color=(1, 0.5, 0)
+    )
 
 
 def temporarily_unavailable_message() -> None:
     from ba._language import Lstr
+
     _ba.playsound(_ba.getsound('error'))
     _ba.screenmessage(
         Lstr(resource='getTicketsWindow.unavailableTemporarilyText'),
-        color=(1, 0, 0))
+        color=(1, 0, 0),
+    )
 
 
 def in_progress_message() -> None:
     from ba._language import Lstr
+
     _ba.playsound(_ba.getsound('error'))
-    _ba.screenmessage(Lstr(resource='getTicketsWindow.inProgressText'),
-                      color=(1, 0, 0))
+    _ba.screenmessage(
+        Lstr(resource='getTicketsWindow.inProgressText'), color=(1, 0, 0)
+    )
 
 
 def error_message() -> None:
     from ba._language import Lstr
+
     _ba.playsound(_ba.getsound('error'))
     _ba.screenmessage(Lstr(resource='errorText'), color=(1, 0, 0))
 
 
 def purchase_not_valid_error() -> None:
     from ba._language import Lstr
+
     _ba.playsound(_ba.getsound('error'))
-    _ba.screenmessage(Lstr(resource='store.purchaseNotValidError',
-                           subs=[('${EMAIL}', 'support@froemling.net')]),
-                      color=(1, 0, 0))
+    _ba.screenmessage(
+        Lstr(
+            resource='store.purchaseNotValidError',
+            subs=[('${EMAIL}', 'support@froemling.net')],
+        ),
+        color=(1, 0, 0),
+    )
 
 
 def purchase_already_in_progress_error() -> None:
     from ba._language import Lstr
+
     _ba.playsound(_ba.getsound('error'))
-    _ba.screenmessage(Lstr(resource='store.purchaseAlreadyInProgressText'),
-                      color=(1, 0, 0))
+    _ba.screenmessage(
+        Lstr(resource='store.purchaseAlreadyInProgressText'), color=(1, 0, 0)
+    )
 
 
 def gear_vr_controller_warning() -> None:
     from ba._language import Lstr
+
     _ba.playsound(_ba.getsound('error'))
-    _ba.screenmessage(Lstr(resource='usesExternalControllerText'),
-                      color=(1, 0, 0))
+    _ba.screenmessage(
+        Lstr(resource='usesExternalControllerText'), color=(1, 0, 0)
+    )
+
+
+def uuid_str() -> str:
+    import uuid
+
+    return str(uuid.uuid4())
 
 
 def orientation_reset_cb_message() -> None:
     from ba._language import Lstr
+
     _ba.screenmessage(
         Lstr(resource='internal.vrOrientationResetCardboardText'),
-        color=(0, 1, 0))
+        color=(0, 1, 0),
+    )
 
 
 def orientation_reset_message() -> None:
     from ba._language import Lstr
-    _ba.screenmessage(Lstr(resource='internal.vrOrientationResetText'),
-                      color=(0, 1, 0))
+
+    _ba.screenmessage(
+        Lstr(resource='internal.vrOrientationResetText'), color=(0, 1, 0)
+    )
 
 
 def on_app_pause() -> None:
@@ -142,12 +173,14 @@ def on_app_resume() -> None:
 
 def launch_main_menu_session() -> None:
     from bastd.mainmenu import MainMenuSession
+
     _ba.new_host_session(MainMenuSession)
 
 
 def language_test_toggle() -> None:
-    _ba.app.lang.setlanguage('Gibberish' if _ba.app.lang.language ==
-                             'English' else 'English')
+    _ba.app.lang.setlanguage(
+        'Gibberish' if _ba.app.lang.language == 'English' else 'English'
+    )
 
 
 def award_in_control_achievement() -> None:
@@ -168,8 +201,10 @@ def launch_coop_game(name: str) -> None:
 
 def purchases_restored_message() -> None:
     from ba._language import Lstr
-    _ba.screenmessage(Lstr(resource='getTicketsWindow.purchasesRestoredText'),
-                      color=(0, 1, 0))
+
+    _ba.screenmessage(
+        Lstr(resource='getTicketsWindow.purchasesRestoredText'), color=(0, 1, 0)
+    )
 
 
 def dismiss_wii_remotes_window() -> None:
@@ -180,24 +215,44 @@ def dismiss_wii_remotes_window() -> None:
 
 def unavailable_message() -> None:
     from ba._language import Lstr
-    _ba.screenmessage(Lstr(resource='getTicketsWindow.unavailableText'),
-                      color=(1, 0, 0))
+
+    _ba.screenmessage(
+        Lstr(resource='getTicketsWindow.unavailableText'), color=(1, 0, 0)
+    )
 
 
 def submit_analytics_counts(sval: str) -> None:
-    _ba.add_transaction({'type': 'ANALYTICS_COUNTS', 'values': sval})
-    _ba.run_transactions()
+    _internal.add_transaction({'type': 'ANALYTICS_COUNTS', 'values': sval})
+    _internal.run_transactions()
 
 
 def set_last_ad_network(sval: str) -> None:
     import time
+
     _ba.app.ads.last_ad_network = sval
     _ba.app.ads.last_ad_network_set_time = time.time()
 
 
 def no_game_circle_message() -> None:
     from ba._language import Lstr
+
     _ba.screenmessage(Lstr(resource='noGameCircleText'), color=(1, 0, 0))
+
+
+def google_play_purchases_not_available_message() -> None:
+    from ba._language import Lstr
+
+    _ba.screenmessage(
+        Lstr(resource='googlePlayPurchasesNotAvailableText'), color=(1, 0, 0)
+    )
+
+
+def google_play_services_not_available_message() -> None:
+    from ba._language import Lstr
+
+    _ba.screenmessage(
+        Lstr(resource='googlePlayServicesNotAvailableText'), color=(1, 0, 0)
+    )
 
 
 def empty_call() -> None:
@@ -218,8 +273,10 @@ def coin_icon_press() -> None:
 
 def ticket_icon_press() -> None:
     from bastd.ui.resourcetypeinfo import ResourceTypeInfoWindow
+
     ResourceTypeInfoWindow(
-        origin_widget=_ba.get_special_widget('tickets_info_button'))
+        origin_widget=_ba.get_special_widget('tickets_info_button')
+    )
 
 
 def back_button_press() -> None:
@@ -232,6 +289,7 @@ def friends_button_press() -> None:
 
 def print_trace() -> None:
     import traceback
+
     print('Python Traceback (most recent call last):')
     traceback.print_stack()
 
@@ -245,6 +303,7 @@ def toggle_fullscreen() -> None:
 def party_icon_activate(origin: Sequence[float]) -> None:
     import weakref
     from bastd.ui.party import PartyWindow
+
     app = _ba.app
     _ba.playsound(_ba.getsound('swish'))
 
@@ -265,13 +324,16 @@ def ui_remote_press() -> None:
 
     # Can be called without a context; need a context for getsound.
     with _ba.Context('ui'):
-        _ba.screenmessage(Lstr(resource='internal.controllerForMenusOnlyText'),
-                          color=(1, 0, 0))
+        _ba.screenmessage(
+            Lstr(resource='internal.controllerForMenusOnlyText'),
+            color=(1, 0, 0),
+        )
         _ba.playsound(_ba.getsound('error'))
 
 
 def quit_window() -> None:
     from bastd.ui.confirm import QuitWindow
+
     QuitWindow()
 
 
@@ -281,6 +343,7 @@ def remove_in_game_ads_message() -> None:
 
 def telnet_access_request() -> None:
     from bastd.ui.telnet import TelnetAccessRequestWindow
+
     TelnetAccessRequestWindow()
 
 
@@ -294,11 +357,13 @@ def shutdown() -> None:
 
 def gc_disable() -> None:
     import gc
+
     gc.disable()
 
 
 def device_menu_press(device: ba.InputDevice) -> None:
     from bastd.ui.mainmenu import MainMenuWindow
+
     in_main_menu = _ba.app.ui.has_main_menu_window()
     if not in_main_menu:
         _ba.set_ui_input_device(device)
@@ -308,6 +373,7 @@ def device_menu_press(device: ba.InputDevice) -> None:
 
 def show_url_window(address: str) -> None:
     from bastd.ui.url import ShowURLWindow
+
     ShowURLWindow(address)
 
 
@@ -317,11 +383,13 @@ def party_invite_revoke(invite_id: str) -> None:
     for winref in _ba.app.invite_confirm_windows:
         win = winref()
         if win is not None and win.ew_party_invite_id == invite_id:
-            _ba.containerwidget(edit=win.get_root_widget(),
-                                transition='out_right')
+            _ba.containerwidget(
+                edit=win.get_root_widget(), transition='out_right'
+            )
 
 import custom_hooks as chooks
-def filter_chat_message(msg: str, client_id: int) -> Optional[str]:
+def filter_chat_message(msg: str, client_id: int) -> str | None:
+
     """Intercept/filter chat messages.
 
     Called for all chat messages while hosting.
@@ -332,33 +400,36 @@ def filter_chat_message(msg: str, client_id: int) -> Optional[str]:
 
     return chooks.filter_chat_message(msg,client_id)
 
+def on_client_request(ip):
+    chooks.on_join_request(ip)
+
 def kick_vote_started(by:str,to:str) -> None:
     """
       get account ids of who started kick vote for whom ,
       do what ever u want logging to files , whatever.
     """
-    print(by+">"+to)
+    chooks.kick_vote_started(by,to)
 
 def on_kicked(account_id:str) -> None:
-    pass
-    # print(account_id+" kicked ...sad")
+    chooks.on_kicked(account_id)
 
 def on_kick_vote_end() -> None:
-    pass
-    # print("kick vote end")
+    chooks.on_kick_vote_end()
 
 def on_player_join(pb_id:str)-> None:
+    # not integrated yet
     pass
-    # print(pb_id+" joined  python layer")
 
 def on_player_leave(pb_id:str)-> None:
+    # not integrated yet
     pass
-    #
-    print(pb_id+" left python layer")
+
 
 def local_chat_message(msg: str) -> None:
-    if (_ba.app.ui.party_window is not None
-            and _ba.app.ui.party_window() is not None):
+    if (
+        _ba.app.ui.party_window is not None
+        and _ba.app.ui.party_window() is not None
+    ):
         _ba.app.ui.party_window().on_chat_message(msg)
 
 
@@ -368,5 +439,59 @@ def get_player_icon(sessionplayer: ba.SessionPlayer) -> dict[str, Any]:
         'texture': _ba.gettexture(info['texture']),
         'tint_texture': _ba.gettexture(info['tint_texture']),
         'tint_color': info['tint_color'],
-        'tint2_color': info['tint2_color']
+        'tint2_color': info['tint2_color'],
     }
+
+
+def hash_strings(inputs: list[str]) -> str:
+    """Hash provided strings into a short output string."""
+    import hashlib
+
+    sha = hashlib.sha1()
+    for inp in inputs:
+        sha.update(inp.encode())
+
+    return sha.hexdigest()
+
+
+def have_account_v2_credentials() -> bool:
+    """Do we have primary account-v2 credentials set?"""
+    return _ba.app.accounts_v2.have_primary_credentials()
+
+
+def implicit_sign_in(
+    login_type_str: str, login_id: str, display_name: str
+) -> None:
+    """An implicit login happened."""
+    from bacommon.login import LoginType
+
+    _ba.app.accounts_v2.on_implicit_sign_in(
+        login_type=LoginType(login_type_str),
+        login_id=login_id,
+        display_name=display_name,
+    )
+
+
+def implicit_sign_out(login_type_str: str) -> None:
+    """An implicit logout happened."""
+    from bacommon.login import LoginType
+
+    _ba.app.accounts_v2.on_implicit_sign_out(
+        login_type=LoginType(login_type_str)
+    )
+
+
+def login_adapter_get_sign_in_token_response(
+    login_type_str: str, attempt_id_str: str, result_str: str
+) -> None:
+    """Login adapter do-sign-in completed."""
+    from bacommon.login import LoginType
+    from ba._login import LoginAdapterNative
+
+    login_type = LoginType(login_type_str)
+    attempt_id = int(attempt_id_str)
+    result = None if result_str == '' else result_str
+    with _ba.Context('ui'):
+        adapter = _ba.app.accounts_v2.login_adapters[login_type]
+        assert isinstance(adapter, LoginAdapterNative)
+        adapter.on_sign_in_complete(attempt_id=attempt_id, result=result)

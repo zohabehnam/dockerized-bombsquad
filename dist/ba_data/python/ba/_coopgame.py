@@ -6,22 +6,25 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, TypeVar
 
 import _ba
+from ba import _internal
 from ba._gameactivity import GameActivity
 from ba._general import WeakCall
 
 if TYPE_CHECKING:
-    from typing import Any, Sequence, Optional
+    from typing import Sequence
     from bastd.actor.playerspaz import PlayerSpaz
     import ba
 
+# pylint: disable=invalid-name
 PlayerType = TypeVar('PlayerType', bound='ba.Player')
 TeamType = TypeVar('TeamType', bound='ba.Team')
+# pylint: enable=invalid-name
 
 
 class CoopGameActivity(GameActivity[PlayerType, TeamType]):
     """Base class for cooperative-mode games.
 
-    Category: Gameplay Classes
+    Category: **Gameplay Classes**
     """
 
     # We can assume our session is a CoopSession.
@@ -30,6 +33,7 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
     @classmethod
     def supports_session_type(cls, sessiontype: type[ba.Session]) -> bool:
         from ba._coopsession import CoopSession
+
         return issubclass(sessiontype, CoopSession)
 
     def __init__(self, settings: dict):
@@ -38,8 +42,8 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
         # Cache these for efficiency.
         self._achievements_awarded: set[str] = set()
 
-        self._life_warning_beep: Optional[ba.Actor] = None
-        self._life_warning_beep_timer: Optional[ba.Timer] = None
+        self._life_warning_beep: ba.Actor | None = None
+        self._life_warning_beep_timer: ba.Timer | None = None
         self._warn_beeps_sound = _ba.getsound('warnBeeps')
 
     def on_begin(self) -> None:
@@ -52,58 +56,6 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
         # Preload achievement images in case we get some.
         _ba.timer(2.0, WeakCall(self._preload_achievements))
 
-        # Let's ask the server for a 'time-to-beat' value.
-        levelname = self._get_coop_level_name()
-        campaign = self.session.campaign
-        assert campaign is not None
-        config_str = (str(len(self.players)) + 'p' + campaign.getlevel(
-            self.settings_raw['name']).get_score_version_string().replace(
-                ' ', '_'))
-        _ba.get_scores_to_beat(levelname, config_str,
-                               WeakCall(self._on_got_scores_to_beat))
-
-    def _on_got_scores_to_beat(self, scores: list[dict[str, Any]]) -> None:
-        pass
-
-    def _show_standard_scores_to_beat_ui(self,
-                                         scores: list[dict[str, Any]]) -> None:
-        from efro.util import asserttype
-        from ba._gameutils import timestring, animate
-        from ba._nodeactor import NodeActor
-        from ba._generated.enums import TimeFormat
-        display_type = self.get_score_type()
-        if scores is not None:
-
-            # Sort by originating date so that the most recent is first.
-            scores.sort(reverse=True, key=lambda s: asserttype(s['time'], int))
-
-            # Now make a display for the most recent challenge.
-            for score in scores:
-                if score['type'] == 'score_challenge':
-                    tval = (score['player'] + ':  ' + timestring(
-                        int(score['value']) * 10,
-                        timeformat=TimeFormat.MILLISECONDS).evaluate()
-                            if display_type == 'time' else str(score['value']))
-                    hattach = 'center' if display_type == 'time' else 'left'
-                    halign = 'center' if display_type == 'time' else 'left'
-                    pos = (20, -70) if display_type == 'time' else (20, -130)
-                    txt = NodeActor(
-                        _ba.newnode('text',
-                                    attrs={
-                                        'v_attach': 'top',
-                                        'h_attach': hattach,
-                                        'h_align': halign,
-                                        'color': (0.7, 0.4, 1, 1),
-                                        'shadow': 0.5,
-                                        'flatness': 1.0,
-                                        'position': pos,
-                                        'scale': 0.6,
-                                        'text': tval
-                                    })).autoretain()
-                    assert txt.node is not None
-                    animate(txt.node, 'scale', {1.0: 0.0, 1.1: 0.7, 1.2: 0.6})
-                    break
-
     # FIXME: this is now redundant with activityutils.getscoreconfig();
     #  need to kill this.
     def get_score_type(self) -> str:
@@ -114,8 +66,7 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
 
     def _get_coop_level_name(self) -> str:
         assert self.session.campaign is not None
-        return self.session.campaign.name + ':' + str(
-            self.settings_raw['name'])
+        return self.session.campaign.name + ':' + str(self.settings_raw['name'])
 
     def celebrate(self, duration: float) -> None:
         """Tells all existing player-controlled characters to celebrate.
@@ -125,13 +76,15 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
         duration is given in seconds.
         """
         from ba._messages import CelebrateMessage
+
         for player in self.players:
             if player.actor:
                 player.actor.handlemessage(CelebrateMessage(duration))
 
     def _preload_achievements(self) -> None:
         achievements = _ba.app.ach.achievements_for_coop_level(
-            self._get_coop_level_name())
+            self._get_coop_level_name()
+        )
         for ach in achievements:
             ach.get_icon_texture(True)
 
@@ -139,43 +92,52 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
         # pylint: disable=cyclic-import
         from ba._language import Lstr
         from bastd.actor.text import Text
+
         ts_h_offs = 30
         v_offs = -200
         achievements = [
-            a for a in _ba.app.ach.achievements_for_coop_level(
-                self._get_coop_level_name()) if not a.complete
+            a
+            for a in _ba.app.ach.achievements_for_coop_level(
+                self._get_coop_level_name()
+            )
+            if not a.complete
         ]
         vrmode = _ba.app.vr_mode
         if achievements:
-            Text(Lstr(resource='achievementsRemainingText'),
-                 host_only=True,
-                 position=(ts_h_offs - 10 + 40, v_offs - 10),
-                 transition=Text.Transition.FADE_IN,
-                 scale=1.1,
-                 h_attach=Text.HAttach.LEFT,
-                 v_attach=Text.VAttach.TOP,
-                 color=(1, 1, 1.2, 1) if vrmode else (0.8, 0.8, 1.0, 1.0),
-                 flatness=1.0 if vrmode else 0.6,
-                 shadow=1.0 if vrmode else 0.5,
-                 transition_delay=0.0,
-                 transition_out_delay=1.3
-                 if self.slow_motion else 4.0).autoretain()
+            Text(
+                Lstr(resource='achievementsRemainingText'),
+                host_only=True,
+                position=(ts_h_offs - 10 + 40, v_offs - 10),
+                transition=Text.Transition.FADE_IN,
+                scale=1.1,
+                h_attach=Text.HAttach.LEFT,
+                v_attach=Text.VAttach.TOP,
+                color=(1, 1, 1.2, 1) if vrmode else (0.8, 0.8, 1.0, 1.0),
+                flatness=1.0 if vrmode else 0.6,
+                shadow=1.0 if vrmode else 0.5,
+                transition_delay=0.0,
+                transition_out_delay=1.3 if self.slow_motion else 4.0,
+            ).autoretain()
             hval = 70
             vval = -50
             tdelay = 0.0
             for ach in achievements:
                 tdelay += 0.05
-                ach.create_display(hval + 40,
-                                   vval + v_offs,
-                                   0 + tdelay,
-                                   outdelay=1.3 if self.slow_motion else 4.0,
-                                   style='in_game')
+                ach.create_display(
+                    hval + 40,
+                    vval + v_offs,
+                    0 + tdelay,
+                    outdelay=1.3 if self.slow_motion else 4.0,
+                    style='in_game',
+                )
                 vval -= 55
 
-    def spawn_player_spaz(self,
-                          player: PlayerType,
-                          position: Sequence[float] = (0.0, 0.0, 0.0),
-                          angle: float = None) -> PlayerSpaz:
+    def spawn_player_spaz(
+        self,
+        player: PlayerType,
+        position: Sequence[float] = (0.0, 0.0, 0.0),
+        angle: float | None = None,
+    ) -> PlayerSpaz:
         """Spawn and wire up a standard player spaz."""
         spaz = super().spawn_player_spaz(player, position, angle)
 
@@ -183,9 +145,9 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
         spaz.play_big_death_sound = True
         return spaz
 
-    def _award_achievement(self,
-                           achievement_name: str,
-                           sound: bool = True) -> None:
+    def _award_achievement(
+        self, achievement_name: str, sound: bool = True
+    ) -> None:
         """Award an achievement.
 
         Returns True if a banner will be shown;
@@ -206,6 +168,7 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
                 return
         except Exception:
             from ba._error import print_exception
+
             print_exception()
 
         # If we haven't awarded this one, check to see if we've got it.
@@ -215,13 +178,12 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
             self._achievements_awarded.add(achievement_name)
 
             # Report new achievements to the game-service.
-            _ba.report_achievement(achievement_name)
+            _internal.report_achievement(achievement_name)
 
             # ...and to our account.
-            _ba.add_transaction({
-                'type': 'ACHIEVEMENT',
-                'name': achievement_name
-            })
+            _internal.add_transaction(
+                {'type': 'ACHIEVEMENT', 'name': achievement_name}
+            )
 
             # Now bring up a celebration banner.
             ach.announce_completion(sound=sound)
@@ -229,14 +191,17 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
     def fade_to_red(self) -> None:
         """Fade the screen to red; (such as when the good guys have lost)."""
         from ba import _gameutils
+
         c_existing = self.globalsnode.tint
-        cnode = _ba.newnode('combine',
-                            attrs={
-                                'input0': c_existing[0],
-                                'input1': c_existing[1],
-                                'input2': c_existing[2],
-                                'size': 3
-                            })
+        cnode = _ba.newnode(
+            'combine',
+            attrs={
+                'input0': c_existing[0],
+                'input1': c_existing[1],
+                'input2': c_existing[2],
+                'size': 3,
+            },
+        )
         _gameutils.animate(cnode, 'input1', {0: c_existing[1], 2.0: 0})
         _gameutils.animate(cnode, 'input2', {0: c_existing[2], 2.0: 0})
         cnode.connectattr('output', self.globalsnode, 'tint')
@@ -245,7 +210,8 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
         """Set up a beeping noise to play when any players are near death."""
         self._life_warning_beep = None
         self._life_warning_beep_timer = _ba.Timer(
-            1.0, WeakCall(self._update_life_warning), repeat=True)
+            1.0, WeakCall(self._update_life_warning), repeat=True
+        )
 
     def _update_life_warning(self) -> None:
         # Beep continuously if anyone is close to death.
@@ -259,12 +225,16 @@ class CoopGameActivity(GameActivity[PlayerType, TeamType]):
                     break
         if should_beep and self._life_warning_beep is None:
             from ba._nodeactor import NodeActor
+
             self._life_warning_beep = NodeActor(
-                _ba.newnode('sound',
-                            attrs={
-                                'sound': self._warn_beeps_sound,
-                                'positional': False,
-                                'loop': True
-                            }))
+                _ba.newnode(
+                    'sound',
+                    attrs={
+                        'sound': self._warn_beeps_sound,
+                        'positional': False,
+                        'loop': True,
+                    },
+                )
+            )
         if self._life_warning_beep is not None and not should_beep:
             self._life_warning_beep = None

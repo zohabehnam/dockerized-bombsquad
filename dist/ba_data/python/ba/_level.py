@@ -10,30 +10,32 @@ from typing import TYPE_CHECKING
 import _ba
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
     import ba
 
 
 class Level:
     """An entry in a ba.Campaign consisting of a name, game type, and settings.
 
-    category: Gameplay Classes
+    Category: **Gameplay Classes**
     """
 
-    def __init__(self,
-                 name: str,
-                 gametype: type[ba.GameActivity],
-                 settings: dict,
-                 preview_texture_name: str,
-                 displayname: str = None):
+    def __init__(
+        self,
+        name: str,
+        gametype: type[ba.GameActivity],
+        settings: dict,
+        preview_texture_name: str,
+        displayname: str | None = None,
+    ):
         self._name = name
         self._gametype = gametype
         self._settings = settings
         self._preview_texture_name = preview_texture_name
         self._displayname = displayname
-        self._campaign: Optional[weakref.ref[ba.Campaign]] = None
-        self._index: Optional[int] = None
-        self._score_version_string: Optional[str] = None
+        self._campaign: weakref.ref[ba.Campaign] | None = None
+        self._index: int | None = None
+        self._score_version_string: str | None = None
 
     def __repr__(self) -> str:
         cls = type(self)
@@ -66,11 +68,18 @@ class Level:
     def displayname(self) -> ba.Lstr:
         """The localized name for this Level."""
         from ba import _language
+
         return _language.Lstr(
-            translate=('coopLevelNames', self._displayname
-                       if self._displayname is not None else self._name),
-            subs=[('${GAME}',
-                   self._gametype.get_display_string(self._settings))])
+            translate=(
+                'coopLevelNames',
+                self._displayname
+                if self._displayname is not None
+                else self._name,
+            ),
+            subs=[
+                ('${GAME}', self._gametype.get_display_string(self._settings))
+            ],
+        )
 
     @property
     def gametype(self) -> type[ba.GameActivity]:
@@ -78,7 +87,7 @@ class Level:
         return self._gametype
 
     @property
-    def campaign(self) -> Optional[ba.Campaign]:
+    def campaign(self) -> ba.Campaign | None:
         """The ba.Campaign this Level is associated with, or None."""
         return None if self._campaign is None else self._campaign()
 
@@ -156,10 +165,9 @@ class Level:
         if campaign is None:
             raise RuntimeError('Level is not in a campaign.')
         configdict = campaign.configdict
-        val: dict[str, Any] = configdict.setdefault(self._name, {
-            'Rating': 0.0,
-            'Complete': False
-        })
+        val: dict[str, Any] = configdict.setdefault(
+            self._name, {'Rating': 0.0, 'Complete': False}
+        )
         assert isinstance(val, dict)
         return val
 

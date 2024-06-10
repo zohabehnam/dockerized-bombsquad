@@ -75,6 +75,10 @@ def _default_color_enabled() -> bool:
     if not sys.__stdout__.isatty():
         return False
 
+    # Another common way to say the terminal can't do fancy stuff like color:
+    if os.environ.get('TERM') == 'dumb':
+        return False
+
     # On windows, try to enable ANSI color mode.
     if platform.system() == 'Windows':
         return _windows_enable_color()
@@ -91,6 +95,7 @@ def _windows_enable_color() -> bool:
     import msvcrt
     import ctypes
     from ctypes import wintypes
+
     kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)  # type: ignore
 
     ERROR_INVALID_PARAMETER = 0x0057
@@ -107,7 +112,7 @@ def _windows_enable_color() -> bool:
     kernel32.SetConsoleMode.errcheck = _check_bool
     kernel32.SetConsoleMode.argtypes = (wintypes.HANDLE, wintypes.DWORD)
 
-    def set_conout_mode(new_mode: int, mask: int = 0xffffffff) -> int:
+    def set_conout_mode(new_mode: int, mask: int = 0xFFFFFFFF) -> int:
         # don't assume StandardOutput is a console.
         # open CONOUT$ instead
         fdout = os.open('CONOUT$', os.O_RDWR)
@@ -142,6 +147,7 @@ def _windows_enable_color() -> bool:
 
 class ClrBase:
     """Base class for color convenience class."""
+
     RST: ClassVar[str]
     BLD: ClassVar[str]
     UND: ClassVar[str]
@@ -194,6 +200,7 @@ class ClrAlways(ClrBase):
     This version has colors always enabled. Generally you should use Clr which
     points to the correct enabled/disabled class depending on the environment.
     """
+
     color_enabled = True
 
     # Styles
@@ -249,6 +256,7 @@ class ClrNever(ClrBase):
     This version has colors disabled. Generally you should use Clr which
     points to the correct enabled/disabled class depending on the environment.
     """
+
     color_enabled = False
 
     # Styles
@@ -299,8 +307,13 @@ class ClrNever(ClrBase):
 
 
 _envval = os.environ.get('EFRO_TERMCOLORS')
-_color_enabled: bool = (True if _envval == '1' else
-                        False if _envval == '0' else _default_color_enabled())
+_color_enabled: bool = (
+    True
+    if _envval == '1'
+    else False
+    if _envval == '0'
+    else _default_color_enabled()
+)
 Clr: type[ClrBase]
 if _color_enabled:
     Clr = ClrAlways
