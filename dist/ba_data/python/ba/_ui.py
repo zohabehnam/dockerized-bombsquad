@@ -10,7 +10,7 @@ import _ba
 from ba._generated.enums import UIScale
 
 if TYPE_CHECKING:
-    from typing import Any, Callable
+    from typing import Optional, Any, Callable
     from ba.ui import UICleanupCheck
     import ba
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class UISubsystem:
     """Consolidated UI functionality for the app.
 
-    Category: **App Classes**
+    Category: App Classes
 
     To use this class, access the single instance of it at 'ba.app.ui'.
     """
@@ -26,10 +26,10 @@ class UISubsystem:
     def __init__(self) -> None:
         env = _ba.env()
 
-        self.controller: ba.UIController | None = None
+        self.controller: Optional[ba.UIController] = None
 
-        self._main_menu_window: ba.Widget | None = None
-        self._main_menu_location: str | None = None
+        self._main_menu_window: Optional[ba.Widget] = None
+        self._main_menu_location: Optional[str] = None
 
         self._uiscale: ba.UIScale
 
@@ -44,12 +44,13 @@ class UISubsystem:
             raise RuntimeError(f'Invalid UIScale value: {interfacetype}')
 
         self.window_states: dict[type, Any] = {}  # FIXME: Kill this.
-        self.main_menu_selection: str | None = None  # FIXME: Kill this.
+        self.main_menu_selection: Optional[str] = None  # FIXME: Kill this.
         self.have_party_queue_window = False
         self.quit_window: Any = None
-        self.dismiss_wii_remotes_window_call: (Callable[[], Any] | None) = None
+        self.dismiss_wii_remotes_window_call: (Optional[Callable[[],
+                                                                 Any]]) = None
         self.cleanupchecks: list[UICleanupCheck] = []
-        self.upkeeptimer: ba.Timer | None = None
+        self.upkeeptimer: Optional[ba.Timer] = None
         self.use_toolbars = env.get('toolbar_test', True)
         self.party_window: Any = None  # FIXME: Don't use Any.
         self.title_color = (0.72, 0.7, 0.75)
@@ -89,21 +90,19 @@ class UISubsystem:
         if bool(False):  # force-test ui scale
             self._uiscale = UIScale.SMALL
             with _ba.Context('ui'):
-                _ba.pushcall(
-                    lambda: _ba.screenmessage(
-                        f'FORCING UISCALE {self._uiscale.name} FOR TESTING',
-                        color=(1, 0, 1),
-                        log=True,
-                    )
-                )
+                _ba.pushcall(lambda: _ba.screenmessage(
+                    f'FORCING UISCALE {self._uiscale.name} FOR TESTING',
+                    color=(1, 0, 1),
+                    log=True))
 
         self.controller = UIController()
 
         # Kick off our periodic UI upkeep.
         # FIXME: Can probably kill this if we do immediate UI death checks.
-        self.upkeeptimer = _ba.Timer(
-            2.6543, ui_upkeep, timetype=TimeType.REAL, repeat=True
-        )
+        self.upkeeptimer = _ba.Timer(2.6543,
+                                     ui_upkeep,
+                                     timetype=TimeType.REAL,
+                                     repeat=True)
 
     def set_main_menu_window(self, window: ba.Widget) -> None:
         """Set the current 'main' window, replacing any existing."""
@@ -124,7 +123,6 @@ class UISubsystem:
                 frameline = f'{frameinfo.filename} {frameinfo.lineno}'
         except Exception:
             from ba._error import print_exception
-
             print_exception('Error calcing line for set_main_menu_window')
 
         # With our legacy main-menu system, the caller is responsible for
@@ -139,24 +137,20 @@ class UISubsystem:
         # things.
         def _delay_kill() -> None:
             import time
-
             if existing:
-                print(
-                    f'Killing old main_menu_window'
-                    f' when called at: {frameline} t={time.time():.3f}'
-                )
+                print(f'Killing old main_menu_window'
+                      f' when called at: {frameline} t={time.time():.3f}')
                 existing.delete()
 
         _ba.timer(1.0, _delay_kill, timetype=TimeType.REAL)
         self._main_menu_window = window
 
-    def clear_main_menu_window(self, transition: str | None = None) -> None:
+    def clear_main_menu_window(self, transition: str = None) -> None:
         """Clear any existing 'main' window with the provided transition."""
         if self._main_menu_window:
             if transition is not None:
-                _ba.containerwidget(
-                    edit=self._main_menu_window, transition=transition
-                )
+                _ba.containerwidget(edit=self._main_menu_window,
+                                    transition=transition)
             else:
                 self._main_menu_window.delete()
 
@@ -168,6 +162,6 @@ class UISubsystem:
         """Set the location represented by the current main menu window."""
         self._main_menu_location = location
 
-    def get_main_menu_location(self) -> str | None:
+    def get_main_menu_location(self) -> Optional[str]:
         """Return the current named main menu location, if any."""
         return self._main_menu_location

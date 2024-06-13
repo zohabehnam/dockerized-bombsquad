@@ -15,13 +15,8 @@ import time
 import os
 import sys
 
-from efro.dataclassio import (
-    ioprepped,
-    IOAttrs,
-    dataclass_from_json,
-    dataclass_to_json,
-)
-import _ba
+from efro.dataclassio import (ioprepped, IOAttrs, dataclass_from_json,
+                              dataclass_to_json)
 
 if TYPE_CHECKING:
     from bacommon.assets import AssetPackageFlavor
@@ -38,9 +33,8 @@ class FileValue:
 class State:
     """Holds all persistent state for the asset-manager."""
 
-    files: Annotated[dict[str, FileValue], IOAttrs('files')] = field(
-        default_factory=dict
-    )
+    files: Annotated[dict[str, FileValue],
+                     IOAttrs('files')] = field(default_factory=dict)
 
 
 class AssetManager:
@@ -71,14 +65,8 @@ class AssetManager:
         account_token: str,
     ) -> AssetGather:
         """Spawn an asset-gather operation from this manager."""
-        print(
-            'would gather',
-            packages,
-            'and flavor',
-            flavor,
-            'with token',
-            account_token,
-        )
+        print('would gather', packages, 'and flavor', flavor, 'with token',
+              account_token)
         return AssetGather(self)
 
     def update(self) -> None:
@@ -173,8 +161,11 @@ class AssetGather:
 
 
 def fetch_url(url: str, filename: Path, asset_gather: AssetGather) -> None:
-    """Fetch a given url to a given filename for a given AssetGather."""
+    """Fetch a given url to a given filename for a given AssetGather.
+
+    """
     # pylint: disable=consider-using-with
+
     import socket
 
     # We don't want to keep the provided AssetGather alive, but we want
@@ -184,7 +175,7 @@ def fetch_url(url: str, filename: Path, asset_gather: AssetGather) -> None:
 
     # Pass a very short timeout to urllib so we have opportunities
     # to cancel even with network blockage.
-    req = urllib.request.urlopen(url, context=_ba.app.net.sslcontext, timeout=1)
+    req = urllib.request.urlopen(url, timeout=1)
     file_size = int(req.headers['Content-Length'])
     print(f'\nDownloading: {filename} Bytes: {file_size:,}')
 
@@ -207,7 +198,6 @@ def fetch_url(url: str, filename: Path, asset_gather: AssetGather) -> None:
                 data = req.read(block_sz)
             except ValueError:
                 import traceback
-
                 traceback.print_exc()
                 print('VALUEERROR', flush=True)
                 break
@@ -218,10 +208,8 @@ def fetch_url(url: str, filename: Path, asset_gather: AssetGather) -> None:
                     print('\n\n\nsorry -- try back later')
                     os.unlink(filename)
                     raise
-                print(
-                    '\nHmmm... little issue... '
-                    'I\'ll wait a couple of seconds'
-                )
+                print('\nHmmm... little issue... '
+                      'I\'ll wait a couple of seconds')
                 time.sleep(3)
                 time_outs += 1
                 continue

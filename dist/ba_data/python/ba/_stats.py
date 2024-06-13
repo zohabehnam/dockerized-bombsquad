@@ -9,49 +9,41 @@ from typing import TYPE_CHECKING
 from dataclasses import dataclass
 
 import _ba
-from ba._error import (
-    print_exception,
-    print_error,
-    SessionTeamNotFoundError,
-    SessionPlayerNotFoundError,
-    NotFoundError,
-)
+from ba._error import (print_exception, print_error, SessionTeamNotFoundError,
+                       SessionPlayerNotFoundError, NotFoundError)
 
 if TYPE_CHECKING:
     import ba
-    from typing import Any, Sequence
+    from typing import Any, Optional, Sequence, Union
 
 
 @dataclass
 class PlayerScoredMessage:
     """Informs something that a ba.Player scored.
 
-    Category: **Message Classes**
-    """
+    Category: Message Classes
 
+    Attributes:
+
+        score
+            The score value.
+    """
     score: int
-    """The score value."""
 
 
 class PlayerRecord:
     """Stats for an individual player in a ba.Stats object.
 
-    Category: **Gameplay Classes**
+    Category: Gameplay Classes
 
     This does not necessarily correspond to a ba.Player that is
     still present (stats may be retained for players that leave
     mid-game)
     """
-
     character: str
 
-    def __init__(
-        self,
-        name: str,
-        name_full: str,
-        sessionplayer: ba.SessionPlayer,
-        stats: ba.Stats,
-    ):
+    def __init__(self, name: str, name_full: str,
+                 sessionplayer: ba.SessionPlayer, stats: ba.Stats):
         self.name = name
         self.name_full = name_full
         self.score = 0
@@ -60,12 +52,12 @@ class PlayerRecord:
         self.accum_kill_count = 0
         self.killed_count = 0
         self.accum_killed_count = 0
-        self._multi_kill_timer: ba.Timer | None = None
+        self._multi_kill_timer: Optional[ba.Timer] = None
         self._multi_kill_count = 0
         self._stats = weakref.ref(stats)
-        self._last_sessionplayer: ba.SessionPlayer | None = None
-        self._sessionplayer: ba.SessionPlayer | None = None
-        self._sessionteam: weakref.ref[ba.SessionTeam] | None = None
+        self._last_sessionplayer: Optional[ba.SessionPlayer] = None
+        self._sessionplayer: Optional[ba.SessionPlayer] = None
+        self._sessionteam: Optional[weakref.ref[ba.SessionTeam]] = None
         self.streak = 0
         self.associate_with_sessionplayer(sessionplayer)
 
@@ -107,7 +99,7 @@ class PlayerRecord:
         """Cancel any multi-kill timer for this player entry."""
         self._multi_kill_timer = None
 
-    def getactivity(self) -> ba.Activity | None:
+    def getactivity(self) -> Optional[ba.Activity]:
         """Return the ba.Activity this instance is currently associated with.
 
         Returns None if the activity no longer exists."""
@@ -116,9 +108,8 @@ class PlayerRecord:
             return stats.getactivity()
         return None
 
-    def associate_with_sessionplayer(
-        self, sessionplayer: ba.SessionPlayer
-    ) -> None:
+    def associate_with_sessionplayer(self,
+                                     sessionplayer: ba.SessionPlayer) -> None:
         """Associate this entry with a ba.SessionPlayer."""
         self._sessionteam = weakref.ref(sessionplayer.sessionteam)
         self.character = sessionplayer.character
@@ -141,7 +132,6 @@ class PlayerRecord:
         # pylint: disable=too-many-statements
         from ba._language import Lstr
         from ba._general import Call
-
         self._multi_kill_count += 1
         stats = self._stats()
         assert stats
@@ -182,28 +172,21 @@ class PlayerRecord:
             sound = stats.orchestrahitsound4
         else:
             score = 100
-            name = Lstr(
-                resource='multiKillText',
-                subs=[('${COUNT}', str(self._multi_kill_count))],
-            )
+            name = Lstr(resource='multiKillText',
+                        subs=[('${COUNT}', str(self._multi_kill_count))])
             color = (1.0, 0.5, 0.0, 1)
             scale = 1.3
             delay = 1.0
             sound = stats.orchestrahitsound4
 
-        def _apply(
-            name2: Lstr,
-            score2: int,
-            showpoints2: bool,
-            color2: tuple[float, float, float, float],
-            scale2: float,
-            sound2: ba.Sound | None,
-        ) -> None:
+        def _apply(name2: Lstr, score2: int, showpoints2: bool,
+                   color2: tuple[float, float, float, float], scale2: float,
+                   sound2: Optional[ba.Sound]) -> None:
             from bastd.actor.popuptext import PopupText
 
             # Only award this if they're still alive and we can get
             # a current position for them.
-            our_pos: ba.Vec3 | None = None
+            our_pos: Optional[ba.Vec3] = None
             if self._sessionplayer:
                 if self._sessionplayer.activityplayer is not None:
                     try:
@@ -214,23 +197,18 @@ class PlayerRecord:
                 return
 
             # Jitter position a bit since these often come in clusters.
-            our_pos = _ba.Vec3(
-                our_pos[0] + (random.random() - 0.5) * 2.0,
-                our_pos[1] + (random.random() - 0.5) * 2.0,
-                our_pos[2] + (random.random() - 0.5) * 2.0,
-            )
+            our_pos = _ba.Vec3(our_pos[0] + (random.random() - 0.5) * 2.0,
+                               our_pos[1] + (random.random() - 0.5) * 2.0,
+                               our_pos[2] + (random.random() - 0.5) * 2.0)
             activity = self.getactivity()
             if activity is not None:
-                PopupText(
-                    Lstr(
-                        value=(('+' + str(score2) + ' ') if showpoints2 else '')
-                        + '${N}',
-                        subs=[('${N}', name2)],
-                    ),
-                    color=color2,
-                    scale=scale2,
-                    position=our_pos,
-                ).autoretain()
+                PopupText(Lstr(
+                    value=(('+' + str(score2) + ' ') if showpoints2 else '') +
+                    '${N}',
+                    subs=[('${N}', name2)]),
+                          color=color2,
+                          scale=scale2,
+                          position=our_pos).autoretain()
             if sound2:
                 _ba.playsound(sound2)
 
@@ -244,8 +222,7 @@ class PlayerRecord:
         if name is not None:
             _ba.timer(
                 0.3 + delay,
-                Call(_apply, name, score, showpoints, color, scale, sound),
-            )
+                Call(_apply, name, score, showpoints, color, scale, sound))
 
         # Keep the tally rollin'...
         # set a timer for a bit in the future.
@@ -255,18 +232,18 @@ class PlayerRecord:
 class Stats:
     """Manages scores and statistics for a ba.Session.
 
-    Category: **Gameplay Classes**
+    category: Gameplay Classes
     """
 
     def __init__(self) -> None:
-        self._activity: weakref.ref[ba.Activity] | None = None
+        self._activity: Optional[weakref.ref[ba.Activity]] = None
         self._player_records: dict[str, PlayerRecord] = {}
-        self.orchestrahitsound1: ba.Sound | None = None
-        self.orchestrahitsound2: ba.Sound | None = None
-        self.orchestrahitsound3: ba.Sound | None = None
-        self.orchestrahitsound4: ba.Sound | None = None
+        self.orchestrahitsound1: Optional[ba.Sound] = None
+        self.orchestrahitsound2: Optional[ba.Sound] = None
+        self.orchestrahitsound3: Optional[ba.Sound] = None
+        self.orchestrahitsound4: Optional[ba.Sound] = None
 
-    def setactivity(self, activity: ba.Activity | None) -> None:
+    def setactivity(self, activity: Optional[ba.Activity]) -> None:
         """Set the current activity for this instance."""
 
         self._activity = None if activity is None else weakref.ref(activity)
@@ -279,7 +256,7 @@ class Stats:
                 with _ba.Context(activity):
                     self._load_activity_media()
 
-    def getactivity(self) -> ba.Activity | None:
+    def getactivity(self) -> Optional[ba.Activity]:
         """Get the activity associated with this instance.
 
         May return None.
@@ -322,9 +299,8 @@ class Stats:
             self._player_records[name].associate_with_sessionplayer(player)
         else:
             name_full = player.getname(full=True)
-            self._player_records[name] = PlayerRecord(
-                name, name_full, player, self
-            )
+            self._player_records[name] = PlayerRecord(name, name_full, player,
+                                                      self)
 
     def get_records(self) -> dict[str, ba.PlayerRecord]:
         """Get PlayerRecord corresponding to still-existing players."""
@@ -338,22 +314,20 @@ class Stats:
                 records[record_id] = record
         return records
 
-    def player_scored(
-        self,
-        player: ba.Player,
-        base_points: int = 1,
-        target: Sequence[float] | None = None,
-        kill: bool = False,
-        victim_player: ba.Player | None = None,
-        scale: float = 1.0,
-        color: Sequence[float] | None = None,
-        title: str | ba.Lstr | None = None,
-        screenmessage: bool = True,
-        display: bool = True,
-        importance: int = 1,
-        showpoints: bool = True,
-        big_message: bool = False,
-    ) -> int:
+    def player_scored(self,
+                      player: ba.Player,
+                      base_points: int = 1,
+                      target: Sequence[float] = None,
+                      kill: bool = False,
+                      victim_player: ba.Player = None,
+                      scale: float = 1.0,
+                      color: Sequence[float] = None,
+                      title: Union[str, ba.Lstr] = None,
+                      screenmessage: bool = True,
+                      display: bool = True,
+                      importance: int = 1,
+                      showpoints: bool = True,
+                      big_message: bool = False) -> int:
         """Register a score for the player.
 
         Return value is actual score with multipliers and such factored in.
@@ -367,7 +341,6 @@ class Stats:
         from ba import _math
         from ba._gameactivity import GameActivity
         from ba._language import Lstr
-
         del victim_player  # Currently unused.
         name = player.getname()
         s_player = self._player_records[name]
@@ -391,12 +364,9 @@ class Stats:
                 if isinstance(activity, GameActivity):
                     name_full = player.getname(full=True, icon=False)
                     activity.show_zoom_message(
-                        Lstr(
-                            resource='nameScoresText',
-                            subs=[('${NAME}', name_full)],
-                        ),
-                        color=_math.normalized_color(player.team.color),
-                    )
+                        Lstr(resource='nameScoresText',
+                             subs=[('${NAME}', name_full)]),
+                        color=_math.normalized_color(player.team.color))
             except Exception:
                 print_exception('error showing big_message')
 
@@ -409,26 +379,21 @@ class Stats:
 
                 # If display-pos is *way* lower than us, raise it up
                 # (so we can still see scores from dudes that fell off cliffs).
-                display_pos = (
-                    target[0],
-                    max(target[1], our_pos[1] - 2.0),
-                    min(target[2], our_pos[2] + 2.0),
-                )
+                display_pos = (target[0], max(target[1], our_pos[1] - 2.0),
+                               min(target[2], our_pos[2] + 2.0))
                 activity = self.getactivity()
                 if activity is not None:
                     if title is not None:
-                        sval = Lstr(
-                            value='+${A} ${B}',
-                            subs=[('${A}', str(points)), ('${B}', title)],
-                        )
+                        sval = Lstr(value='+${A} ${B}',
+                                    subs=[('${A}', str(points)),
+                                          ('${B}', title)])
                     else:
-                        sval = Lstr(value='+${A}', subs=[('${A}', str(points))])
-                    PopupText(
-                        sval,
-                        color=display_color,
-                        scale=1.2 * scale,
-                        position=display_pos,
-                    ).autoretain()
+                        sval = Lstr(value='+${A}',
+                                    subs=[('${A}', str(points))])
+                    PopupText(sval,
+                              color=display_color,
+                              scale=1.2 * scale,
+                              position=display_pos).autoretain()
 
         # Tally kills.
         if kill:
@@ -438,12 +403,11 @@ class Stats:
         # Report non-kill scorings.
         try:
             if screenmessage and not kill:
-                _ba.screenmessage(
-                    Lstr(resource='nameScoresText', subs=[('${NAME}', name)]),
-                    top=True,
-                    color=player.color,
-                    image=player.get_icon(),
-                )
+                _ba.screenmessage(Lstr(resource='nameScoresText',
+                                       subs=[('${NAME}', name)]),
+                                  top=True,
+                                  color=player.color,
+                                  image=player.get_icon())
         except Exception:
             print_exception('error announcing score')
 
@@ -458,15 +422,12 @@ class Stats:
 
         return points
 
-    def player_was_killed(
-        self,
-        player: ba.Player,
-        killed: bool = False,
-        killer: ba.Player | None = None,
-    ) -> None:
+    def player_was_killed(self,
+                          player: ba.Player,
+                          killed: bool = False,
+                          killer: ba.Player = None) -> None:
         """Should be called when a player is killed."""
         from ba._language import Lstr
-
         name = player.getname()
         prec = self._player_records[name]
         prec.streak = 0
@@ -476,47 +437,33 @@ class Stats:
         try:
             if killed and _ba.getactivity().announce_player_deaths:
                 if killer is player:
-                    _ba.screenmessage(
-                        Lstr(
-                            resource='nameSuicideText', subs=[('${NAME}', name)]
-                        ),
-                        top=True,
-                        color=player.color,
-                        image=player.get_icon(),
-                    )
+                    _ba.screenmessage(Lstr(resource='nameSuicideText',
+                                           subs=[('${NAME}', name)]),
+                                      top=True,
+                                      color=player.color,
+                                      image=player.get_icon())
                 elif killer is not None:
                     if killer.team is player.team:
-                        _ba.screenmessage(
-                            Lstr(
-                                resource='nameBetrayedText',
-                                subs=[
-                                    ('${NAME}', killer.getname()),
-                                    ('${VICTIM}', name),
-                                ],
-                            ),
-                            top=True,
-                            color=killer.color,
-                            image=killer.get_icon(),
-                        )
+                        _ba.screenmessage(Lstr(resource='nameBetrayedText',
+                                               subs=[('${NAME}',
+                                                      killer.getname()),
+                                                     ('${VICTIM}', name)]),
+                                          top=True,
+                                          color=killer.color,
+                                          image=killer.get_icon())
                     else:
-                        _ba.screenmessage(
-                            Lstr(
-                                resource='nameKilledText',
-                                subs=[
-                                    ('${NAME}', killer.getname()),
-                                    ('${VICTIM}', name),
-                                ],
-                            ),
-                            top=True,
-                            color=killer.color,
-                            image=killer.get_icon(),
-                        )
+                        _ba.screenmessage(Lstr(resource='nameKilledText',
+                                               subs=[('${NAME}',
+                                                      killer.getname()),
+                                                     ('${VICTIM}', name)]),
+                                          top=True,
+                                          color=killer.color,
+                                          image=killer.get_icon())
                 else:
-                    _ba.screenmessage(
-                        Lstr(resource='nameDiedText', subs=[('${NAME}', name)]),
-                        top=True,
-                        color=player.color,
-                        image=player.get_icon(),
-                    )
+                    _ba.screenmessage(Lstr(resource='nameDiedText',
+                                           subs=[('${NAME}', name)]),
+                                      top=True,
+                                      color=player.color,
+                                      image=player.get_icon())
         except Exception:
             print_exception('error announcing kill')

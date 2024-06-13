@@ -10,46 +10,51 @@ from typing import TYPE_CHECKING, TypeVar, Generic
 from ba._error import print_exception
 
 if TYPE_CHECKING:
-    from typing import Sequence
+    from typing import Sequence, Union, Optional
     import ba
 
 
 class SessionTeam:
     """A team of one or more ba.SessionPlayers.
 
-    Category: **Gameplay Classes**
+    Category: Gameplay Classes
 
     Note that a SessionPlayer *always* has a SessionTeam;
     in some cases, such as free-for-all ba.Sessions,
     each SessionTeam consists of just one SessionPlayer.
+
+    Attributes:
+
+        name
+            The team's name.
+
+        id
+            The unique numeric id of the team.
+
+        color
+            The team's color.
+
+        players
+            The list of ba.SessionPlayers on the team.
+
+        customdata
+            A dict for use by the current ba.Session for
+            storing data associated with this team.
+            Unlike customdata, this persists for the duration
+            of the session.
     """
 
     # Annotate our attr types at the class level so they're introspectable.
-
-    name: ba.Lstr | str
-    """The team's name."""
-
+    name: Union[ba.Lstr, str]
     color: tuple[float, ...]  # FIXME: can't we make this fixed len?
-    """The team's color."""
-
     players: list[ba.SessionPlayer]
-    """The list of ba.SessionPlayer-s on the team."""
-
     customdata: dict
-    """A dict for use by the current ba.Session for
-       storing data associated with this team.
-       Unlike customdata, this persists for the duration
-       of the session."""
-
     id: int
-    """The unique numeric id of the team."""
 
-    def __init__(
-        self,
-        team_id: int = 0,
-        name: ba.Lstr | str = '',
-        color: Sequence[float] = (1.0, 1.0, 1.0),
-    ):
+    def __init__(self,
+                 team_id: int = 0,
+                 name: Union[ba.Lstr, str] = '',
+                 color: Sequence[float] = (1.0, 1.0, 1.0)):
         """Instantiate a ba.SessionTeam.
 
         In most cases, all teams are provided to you by the ba.Session,
@@ -61,22 +66,20 @@ class SessionTeam:
         self.color = tuple(color)
         self.players = []
         self.customdata = {}
-        self.activityteam: Team | None = None
+        self.activityteam: Optional[Team] = None
 
     def leave(self) -> None:
         """(internal)"""
         self.customdata = {}
 
 
-# pylint: disable=invalid-name
 PlayerType = TypeVar('PlayerType', bound='ba.Player')
-# pylint: enable=invalid-name
 
 
 class Team(Generic[PlayerType]):
     """A team in a specific ba.Activity.
 
-    Category: **Gameplay Classes**
+    Category: Gameplay Classes
 
     These correspond to ba.SessionTeam objects, but are created per activity
     so that the activity can use its own custom team subclass.
@@ -86,7 +89,7 @@ class Team(Generic[PlayerType]):
     # that types are introspectable (these are still instance attrs).
     players: list[PlayerType]
     id: int
-    name: ba.Lstr | str
+    name: Union[ba.Lstr, str]
     color: tuple[float, ...]  # FIXME: can't we make this fixed length?
     _sessionteam: weakref.ref[SessionTeam]
     _expired: bool
@@ -111,8 +114,7 @@ class Team(Generic[PlayerType]):
                 f' operator (__eq__) which will break internal'
                 f' logic. Please remove it.\n'
                 f'For dataclasses you can do "dataclass(eq=False)"'
-                f' in the class decorator.'
-            )
+                f' in the class decorator.')
 
         self.players = []
         self._sessionteam = weakref.ref(sessionteam)
@@ -123,9 +125,8 @@ class Team(Generic[PlayerType]):
         self._expired = False
         self._postinited = True
 
-    def manual_init(
-        self, team_id: int, name: ba.Lstr | str, color: tuple[float, ...]
-    ) -> None:
+    def manual_init(self, team_id: int, name: Union[ba.Lstr, str],
+                    color: tuple[float, ...]) -> None:
         """Manually init a team for uses such as bots."""
         self.id = team_id
         self.name = name
@@ -190,14 +191,13 @@ class Team(Generic[PlayerType]):
             if sessionteam is not None:
                 return sessionteam
         from ba import _error
-
         raise _error.SessionTeamNotFoundError()
 
 
 class EmptyTeam(Team['ba.EmptyPlayer']):
     """An empty player for use by Activities that don't need to define one.
 
-    Category: **Gameplay Classes**
+    Category: Gameplay Classes
 
     ba.Player and ba.Team are 'Generic' types, and so passing those top level
     classes as type arguments when defining a ba.Activity reduces type safety.

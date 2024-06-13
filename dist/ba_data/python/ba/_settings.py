@@ -28,7 +28,6 @@ class BoolSetting(Setting):
 
     Category: Settings Classes
     """
-
     default: bool
 
 
@@ -38,7 +37,6 @@ class IntSetting(Setting):
 
     Category: Settings Classes
     """
-
     default: int
     min_value: int = 0
     max_value: int = 9999
@@ -51,7 +49,6 @@ class FloatSetting(Setting):
 
     Category: Settings Classes
     """
-
     default: float
     min_value: float = 0.0
     max_value: float = 9999.0
@@ -64,7 +61,6 @@ class ChoiceSetting(Setting):
 
     Category: Settings Classes
     """
-
     choices: list[tuple[str, Any]]
 
 
@@ -74,7 +70,6 @@ class IntChoiceSetting(ChoiceSetting):
 
     Category: Settings Classes
     """
-
     default: int
     choices: list[tuple[str, int]]
 
@@ -85,6 +80,5 @@ class FloatChoiceSetting(ChoiceSetting):
 
     Category: Settings Classes
     """
-
     default: float
     choices: list[tuple[str, float]]

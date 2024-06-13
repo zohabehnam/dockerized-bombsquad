@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from enum import Enum
 from dataclasses import field, dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Optional, Any
 
 from efro.dataclassio import ioprepped
 
@@ -60,11 +60,11 @@ class ServerConfig:
     # playlist editor in the regular version of the game.
     # This will give you a numeric code you can enter here to host that
     # playlist.
-    playlist_code: int | None = None
+    playlist_code: Optional[int] = None
 
     # Alternately, you can embed playlist data here instead of using codes.
     # Make sure to set session_type to the correct type for the data here.
-    playlist_inline: list[dict[str, Any]] | None = None
+    playlist_inline: Optional[list[dict[str, Any]]] = None
 
     # Whether to shuffle the playlist or play its games in designated order.
     playlist_shuffle: bool = True
@@ -104,8 +104,8 @@ class ServerConfig:
     # if ${ACCOUNT} is present in the string, it will be replaced by the
     # currently-signed-in account's id. To fetch info about an account,
     # your back-end server can use the following url:
-    # https://legacy.ballistica.net/accountquery?id=ACCOUNT_ID_HERE
-    stats_url: str | None = None
+    # http://bombsquadgame.com/accountquery?id=ACCOUNT_ID_HERE
+    stats_url: Optional[str] = None
 
     # If present, the server subprocess will attempt to gracefully exit after
     # this amount of time. A graceful exit can occur at the end of a series
@@ -113,38 +113,32 @@ class ServerConfig:
     # default) will then spin up a fresh subprocess. This mechanism can be
     # useful to clear out any memory leaks or other accumulated bad state
     # in the server subprocess.
-    clean_exit_minutes: float | None = None
+    clean_exit_minutes: Optional[float] = None
 
     # If present, the server subprocess will shut down immediately after this
     # amount of time. This can be useful as a fallback for clean_exit_time.
     # The server manager will then spin up a fresh server subprocess if
     # auto-restart is enabled (the default).
-    unclean_exit_minutes: float | None = None
+    unclean_exit_minutes: Optional[float] = None
 
     # If present, the server subprocess will shut down immediately if this
     # amount of time passes with no activity from any players. The server
     # manager will then spin up a fresh server subprocess if auto-restart is
     # enabled (the default).
-    idle_exit_minutes: float | None = None
+    idle_exit_minutes: Optional[float] = None
 
     # Should the tutorial be shown at the beginning of games?
     show_tutorial: bool = False
 
     # Team names (teams mode only).
-    team_names: tuple[str, str] | None = None
+    team_names: Optional[tuple[str, str]] = None
 
     # Team colors (teams mode only).
-    team_colors: tuple[
-        tuple[float, float, float], tuple[float, float, float]
-    ] | None = None
-
-    # Whether to enable the queue where players can line up before entering
-    # your server. Disabling this can be used as a workaround to deal with
-    # queue spamming attacks.
-    enable_queue: bool = True
+    team_colors: Optional[tuple[tuple[float, float, float],
+                                tuple[float, float, float]]] = None
 
     # (internal) stress-testing mode.
-    stress_test_players: int | None = None
+    stress_test_players: Optional[int] = None
 
 
 # NOTE: as much as possible, communication from the server-manager to the
@@ -157,13 +151,11 @@ class ServerCommand:
 @dataclass
 class StartServerModeCommand(ServerCommand):
     """Tells the app to switch into 'server' mode."""
-
     config: ServerConfig
 
 
 class ShutdownReason(Enum):
     """Reason a server is shutting down."""
-
     NONE = 'none'
     RESTARTING = 'restarting'
 
@@ -171,7 +163,6 @@ class ShutdownReason(Enum):
 @dataclass
 class ShutdownCommand(ServerCommand):
     """Tells the server to shut down."""
-
     reason: ShutdownReason
     immediate: bool
 
@@ -179,18 +170,16 @@ class ShutdownCommand(ServerCommand):
 @dataclass
 class ChatMessageCommand(ServerCommand):
     """Chat message from the server."""
-
     message: str
-    clients: list[int] | None
+    clients: Optional[list[int]]
 
 
 @dataclass
 class ScreenMessageCommand(ServerCommand):
     """Screen-message from the server."""
-
     message: str
-    color: tuple[float, float, float] | None
-    clients: list[int] | None
+    color: Optional[tuple[float, float, float]]
+    clients: Optional[list[int]]
 
 
 @dataclass
@@ -201,6 +190,5 @@ class ClientListCommand(ServerCommand):
 @dataclass
 class KickCommand(ServerCommand):
     """Kick a client."""
-
     client_id: int
-    ban_time: int | None
+    ban_time: Optional[int]

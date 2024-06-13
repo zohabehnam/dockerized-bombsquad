@@ -10,7 +10,6 @@ class InputType(Enum):
     Category: Enums
 
     """
-
     UP_DOWN = 2
     LEFT_RIGHT = 3
     JUMP_PRESS = 4
@@ -58,7 +57,6 @@ class UIScale(Enum):
        content needs to be presented as large and clear in order to remain
        readable from an average distance.
     """
-
     LARGE = 0
     MEDIUM = 1
     SMALL = 2
@@ -81,7 +79,6 @@ class TimeType(Enum):
        not advance while the app is backgrounded for instance.  (the engine
        attempts to prevent single large time jumps from occurring)
     """
-
     SIM = 0
     BASE = 1
     REAL = 2
@@ -92,7 +89,6 @@ class TimeFormat(Enum):
 
     Category: Enums
     """
-
     SECONDS = 0
     MILLISECONDS = 1
 
@@ -102,7 +98,6 @@ class Permission(Enum):
 
     Category: Enums
     """
-
     STORAGE = 0
 
 
@@ -111,7 +106,6 @@ class SpecialChar(Enum):
 
     Category: Enums
     """
-
     DOWN_ARROW = 0
     UP_ARROW = 1
     LEFT_ARROW = 2
@@ -202,4 +196,3 @@ class SpecialChar(Enum):
     FLAG_PHILIPPINES = 87
     FLAG_CHILE = 88
     MIKIROG = 89
-    V2_LOGO = 90
